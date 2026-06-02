@@ -1,4 +1,4 @@
-# Hattrick AI Assistant
+# SestoAnalytics
 
 > An open source web application for Hattrick managers — squad analysis, training planning, and match review, powered by the official CHPP API.
 
@@ -81,7 +81,7 @@ Pull requests are welcome. Please open an issue first to discuss what you would 
 
 ---
 
-# Hattrick AI Assistant *(italiano)*
+# SestoAnalytics *(italiano)*
 
 > Applicazione web open source per i manager di Hattrick — analisi rosa, pianificazione allenamento e analisi partite, tramite le API CHPP ufficiali.
 
