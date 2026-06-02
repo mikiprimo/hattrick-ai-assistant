@@ -32,8 +32,8 @@ All data access is **strictly read-only**. No data is written back to Hattrick.
 | Module | Feeds |
 |---|---|
 | Squad | `Players`, `PlayerDetails`, `TransfersTeam`, `Avatars`, `TeamDetails` |
-| Training | `Training`, `Players`, `StaffList`, `Economy` |
-| Matches | `MatchesArchive`, `MatchDetails`, `MatchLineup`, `Standings`, `Worlddetails` |
+| Training | `Training`, `TrainingEvents`, `Players`, `StaffList`, `Economy` |
+| Matches | `Matches`, `MatchesArchive`, `MatchDetails`, `MatchLineup`, `Standings`, `Worlddetails` |
 
 ---
 
