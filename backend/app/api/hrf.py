@@ -12,8 +12,6 @@ from app.models.hrf_settings import HRFSettings
 from app.models.match_snapshot import MatchSnapshot
 from app.models.player import Player
 from app.models.player_skill_history import PlayerSkillHistory
-from app.models.sync_log import SyncLog
-from app.queries import upsert_sync_log
 from app.hrf.scanner import scan_hrf_directory
 from app.hrf.parser import _extract_filename_metadata
 
@@ -126,8 +124,6 @@ def scan_and_import(db: Session = Depends(get_db)):
                 db.add(MatchSnapshot(snapshot_date=snapshot.snapshot_date, **ms_data))
 
     now = datetime.now(timezone.utc)
-    upsert_sync_log(db, "hrf", "ok", now)
-
     db.commit()
     return {
         "status": "ok",

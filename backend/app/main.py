@@ -9,8 +9,6 @@ from app.models.match_snapshot import MatchSnapshot  # noqa: F401
 from app.models.match_prep import MatchPrep  # noqa: F401
 from app.models.formation_xp import FormationXP  # noqa: F401
 from app.models.seasonal_objective import SeasonalObjective  # noqa: F401
-from app.models.settings import CHPPSettings  # noqa: F401
-from app.models.sync_log import SyncLog  # noqa: F401
 
 from app.database import engine, Base
 
