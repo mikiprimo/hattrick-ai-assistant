@@ -17,7 +17,7 @@ export function Settings() {
     setLoading(true)
     setError(null)
     try {
-      await saveHrfSettings({ hrf_folder_path: hrfFolder })
+      await saveHrfSettings({ hrf_folder_path: hrfFolder, team_id: null, enabled: true })
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch {
