@@ -11,7 +11,6 @@ import {
 } from '@tanstack/react-table'
 import { getSquad, type Player } from '../api/squad'
 import { SkillBar } from '../components/SkillBar'
-import { SyncButton } from '../components/SyncButton'
 import { HrfScanButton } from '../components/HrfScanButton'
 
 const col = createColumnHelper<Player>()
@@ -24,7 +23,7 @@ const columns = [
       const player = info.row.original
       return (
         <Link
-          to={`/players/${player.id}`}
+          to={`/rosa/${player.id}`}
           style={{ color: '#3b82f6', textDecoration: 'none', fontWeight: 500 }}
         >
           {player.first_name} {player.last_name}
@@ -113,7 +112,6 @@ export function Squad() {
         <h1 style={{ margin: 0 }}>Rosa ({players.length})</h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <HrfScanButton onScanned={() => qc.invalidateQueries({ queryKey: ['squad'] })} />
-          <SyncButton entity="squad" onSynced={() => qc.invalidateQueries({ queryKey: ['squad'] })} />
         </div>
       </div>
 
