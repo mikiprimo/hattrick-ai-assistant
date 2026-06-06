@@ -42,6 +42,9 @@ class HRFMatchData:
     league_played: int
     league_goals_for: int
     league_goals_against: int
+    league_series: str       # NUOVO
+    tactictype: int          # NUOVO
+    installning: int         # NUOVO
     lineup: dict[str, int]
     ratings: dict[int, int]
 

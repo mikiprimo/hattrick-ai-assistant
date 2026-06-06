@@ -38,9 +38,9 @@ def _parse_basics(cfg: configparser.ConfigParser) -> tuple[int, int]:
     return season, matchround
 
 
-def _parse_lastlineup(cfg: configparser.ConfigParser) -> dict[str, int]:
+def _parse_lastlineup(cfg: configparser.ConfigParser) -> dict:
     if "lastlineup" not in cfg:
-        return {}
+        return {"lineup": {}, "tactictype": 0, "installning": 0}
     sec = cfg["lastlineup"]
     lineup: dict[str, int] = {}
     for key in _LINEUP_KEYS:
@@ -51,10 +51,18 @@ def _parse_lastlineup(cfg: configparser.ConfigParser) -> dict[str, int]:
             continue
         if val > 0:
             lineup[key] = val
-    return lineup
+    try:
+        tactictype = int(sec.get("tactictype", "0").strip())
+    except (ValueError, TypeError):
+        tactictype = 0
+    try:
+        installning = int(sec.get("installning", "0").strip())
+    except (ValueError, TypeError):
+        installning = 0
+    return {"lineup": lineup, "tactictype": tactictype, "installning": installning}
 
 
-def _parse_league(cfg: configparser.ConfigParser) -> dict[str, int]:
+def _parse_league(cfg: configparser.ConfigParser) -> dict:
     if "league" not in cfg:
         return {}
     sec = cfg["league"]
@@ -71,6 +79,7 @@ def _parse_league(cfg: configparser.ConfigParser) -> dict[str, int]:
         "played": i("spelade"),
         "goals_for": i("gjorda"),
         "goals_against": i("inslappta"),
+        "series": sec.get("serie", "").strip(),
     }
 
 
@@ -103,7 +112,7 @@ def parse_hrf_file(file_path: str) -> HRFSnapshot:
         players.append(_parse_player(pid, sec))
 
     season, matchround = _parse_basics(cfg)
-    lineup = _parse_lastlineup(cfg)
+    lastlineup_data = _parse_lastlineup(cfg)
     league = _parse_league(cfg)
 
     match_data = HRFMatchData(
@@ -114,7 +123,10 @@ def parse_hrf_file(file_path: str) -> HRFSnapshot:
         league_played=league.get("played", 0),
         league_goals_for=league.get("goals_for", 0),
         league_goals_against=league.get("goals_against", 0),
-        lineup=lineup,
+        league_series=league.get("series", ""),
+        tactictype=lastlineup_data["tactictype"],
+        installning=lastlineup_data["installning"],
+        lineup=lastlineup_data["lineup"],
         ratings=ratings,
     )
 

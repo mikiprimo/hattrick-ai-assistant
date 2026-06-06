@@ -95,21 +95,16 @@ def test_parse_lastlineup_includes_valid_positions():
         "[lastlineup]\nkeeper=100001\nrightBack=100002\n"
         "insideBack1=-1\ninsideBack2=0\n"
     )
-    lineup = _parse_lastlineup(cfg)
-    assert lineup == {"keeper": 100001, "rightBack": 100002}
+    result = _parse_lastlineup(cfg)
+    assert result["lineup"] == {"keeper": 100001, "rightBack": 100002}
 
 
 def test_parse_lastlineup_excludes_zero_and_minus_one():
     cfg = _make_cfg("[lastlineup]\nkeeper=0\nrightBack=-1\nforward1=100003\n")
-    lineup = _parse_lastlineup(cfg)
-    assert "keeper" not in lineup
-    assert "rightBack" not in lineup
-    assert lineup["forward1"] == 100003
-
-
-def test_parse_lastlineup_missing_section_returns_empty():
-    cfg = _make_cfg("[basics]\nseason=1\n")
-    assert _parse_lastlineup(cfg) == {}
+    result = _parse_lastlineup(cfg)
+    assert "keeper" not in result["lineup"]
+    assert "rightBack" not in result["lineup"]
+    assert result["lineup"]["forward1"] == 100003
 
 
 def test_parse_league_extracts_all_fields():
@@ -117,7 +112,12 @@ def test_parse_league_extracts_all_fields():
         "[league]\nspelade=4\ngjorda=8\ninslappta=3\npoang=10\nplacering=2\n"
     )
     league = _parse_league(cfg)
-    assert league == {"position": 2, "points": 10, "played": 4, "goals_for": 8, "goals_against": 3}
+    assert league["position"] == 2
+    assert league["points"] == 10
+    assert league["played"] == 4
+    assert league["goals_for"] == 8
+    assert league["goals_against"] == 3
+    assert league["series"] == ""  # nessun campo serie in questo cfg
 
 
 def test_parse_league_missing_section_returns_empty():
@@ -143,3 +143,34 @@ def test_parse_hrf_file_match_data_excludes_empty_lineup_positions():
     lineup = snapshot.match_data.lineup
     assert "insideBack1" not in lineup
     assert "insideBack2" not in lineup
+
+
+def test_parse_lastlineup_includes_tactictype_and_installning():
+    cfg = _make_cfg("[lastlineup]\nkeeper=100001\ntactictype=3\ninstallning=2\n")
+    result = _parse_lastlineup(cfg)
+    assert result["tactictype"] == 3
+    assert result["installning"] == 2
+    assert result["lineup"]["keeper"] == 100001
+
+
+def test_parse_lastlineup_missing_section_returns_defaults():
+    cfg = _make_cfg("[basics]\nseason=1\n")
+    result = _parse_lastlineup(cfg)
+    assert result == {"lineup": {}, "tactictype": 0, "installning": 0}
+
+
+def test_parse_league_includes_series():
+    cfg = _make_cfg("[league]\nplacering=2\npoang=10\nspelade=4\ngjorda=8\ninslappta=3\nserie=VII.935\n")
+    league = _parse_league(cfg)
+    assert league["series"] == "VII.935"
+
+
+def test_hrf_snapshot_match_data_has_tactictype_installning_series():
+    snapshot = parse_hrf_file(str(FIXTURES / "549298-2026-05-21.hrf"))
+    md = snapshot.match_data
+    assert hasattr(md, "tactictype")
+    assert hasattr(md, "installning")
+    assert hasattr(md, "league_series")
+    assert isinstance(md.tactictype, int)
+    assert isinstance(md.installning, int)
+    assert md.league_series == "VII.935"
