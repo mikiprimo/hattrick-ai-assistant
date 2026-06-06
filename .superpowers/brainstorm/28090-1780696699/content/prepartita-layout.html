@@ -1,0 +1,120 @@
+<h2>Layout pagina Pre-Partita</h2>
+<p class="subtitle">Come visualizzare formazione consigliata, ranking tattiche e analisi avversario?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="A" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f1923;padding:10px;border-radius:6px;font-size:10px;color:#8899aa">
+      <!-- Step indicator -->
+      <div style="display:flex;gap:4px;margin-bottom:8px;align-items:center">
+        <div style="background:#4fc3f7;color:#0f1923;padding:2px 8px;border-radius:10px;font-weight:700">1 Squadra</div>
+        <div style="color:#4fc3f7">→</div>
+        <div style="background:#243444;color:#778899;padding:2px 8px;border-radius:10px">2 Avversario</div>
+        <div style="color:#556677">→</div>
+        <div style="background:#243444;color:#778899;padding:2px 8px;border-radius:10px">3 Analisi</div>
+      </div>
+      <!-- Step 1 content -->
+      <div style="background:#1a2a3a;border-radius:4px;padding:8px">
+        <div style="color:#4fc3f7;margin-bottom:5px;font-weight:600">La tua squadra · HRF 05-giu</div>
+        <div style="display:flex;gap:4px;margin-bottom:4px">
+          <div style="background:#243444;border-radius:2px;padding:3px 5px;flex:1;color:#ccc">Spirito <span style="color:#66bb6a;float:right">8/10</span></div>
+          <div style="background:#243444;border-radius:2px;padding:3px 5px;flex:1;color:#ccc">Fiducia <span style="color:#ff9800;float:right">7/10</span></div>
+        </div>
+        <div style="background:#243444;border-radius:2px;padding:3px 5px;color:#ccc;margin-bottom:6px">Esp. 4-4-2 <span style="color:#66bb6a;float:right">Eccellente</span></div>
+        <div style="background:#1e3a5f;border-radius:3px;padding:5px;color:#4fc3f7;text-align:center;font-weight:600">→ Avanti: carica avversario</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Wizard a 3 step</h3>
+      <p>Guidato: squadra → avversario → analisi. Un passo alla volta. Ideale se si usa raramente ma richiede più click.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="B" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f1923;padding:10px;border-radius:6px;font-size:10px;color:#8899aa">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+        <!-- Left: my team -->
+        <div style="background:#1a2a3a;border-radius:4px;padding:7px">
+          <div style="color:#4fc3f7;font-weight:600;margin-bottom:5px">La tua squadra</div>
+          <div style="background:#243444;border-radius:2px;padding:3px 4px;margin-bottom:3px;color:#ccc">4-5-1 ★★★★☆</div>
+          <div style="font-size:9px;color:#778899;margin-bottom:2px">Dif 7.2 · CC 8.1 · Att 6.4</div>
+          <div style="background:#243444;border-radius:2px;padding:3px 4px;color:#ccc">Spirito <span style="color:#66bb6a">Eccellente</span></div>
+        </div>
+        <!-- Right: opponent -->
+        <div style="background:#1a2a3a;border-radius:4px;padding:7px">
+          <div style="color:#ef9a9a;font-weight:600;margin-bottom:5px">Avversario</div>
+          <div style="background:#243444;border-radius:2px;padding:3px 4px;margin-bottom:3px;color:#ccc">4-4-2 (stimato)</div>
+          <div style="font-size:9px;color:#778899;margin-bottom:2px">Dif 6.8 · CC 7.3 · Att 7.5</div>
+          <div style="background:#3a1a1a;border-radius:2px;padding:2px 4px;font-size:9px">
+            <span style="color:#aaa">Incolla XML →</span>
+          </div>
+        </div>
+      </div>
+      <!-- Bottom: results -->
+      <div style="background:#1a2a3a;border-radius:4px;padding:7px">
+        <div style="color:#66bb6a;font-weight:600;margin-bottom:4px">Analisi · Tattica consigliata</div>
+        <div style="display:flex;gap:4px">
+          <div style="background:#1e3a1e;border-radius:2px;padding:3px 5px;color:#66bb6a;font-size:9px;flex:1">① Pressing · +1.2</div>
+          <div style="background:#243444;border-radius:2px;padding:3px 5px;color:#778899;font-size:9px;flex:1">② Contropiede · +0.8</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Tre pannelli verticali</h3>
+      <p>Tutto visibile insieme: la tua squadra (sinistra), avversario (destra), analisi (sotto). Compatto, nessun cambio di step.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="C" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f1923;padding:10px;border-radius:6px;font-size:10px;color:#8899aa">
+      <!-- Top bar: status -->
+      <div style="background:#1a2a3a;border-radius:4px;padding:6px;margin-bottom:6px;display:flex;gap:6px;align-items:center">
+        <span style="color:#66bb6a">✓ HRF 05-giu</span>
+        <span style="color:#556677">|</span>
+        <span style="color:#ccc">Spirito <span style="color:#4fc3f7">8</span></span>
+        <span style="color:#556677">|</span>
+        <span style="color:#ccc">4-4-2 <span style="color:#66bb6a">Eccellente</span></span>
+        <span style="flex:1"></span>
+        <span style="background:#3a2a1a;color:#ff9800;padding:2px 5px;border-radius:2px">Incolla XML avv.</span>
+      </div>
+      <!-- Main: formation + tactics side by side -->
+      <div style="display:grid;grid-template-columns:55px 1fr;gap:6px">
+        <!-- Formation pitch mini -->
+        <div style="background:#1a3a1a;border-radius:4px;padding:5px;text-align:center">
+          <div style="color:#66bb6a;font-size:9px;margin-bottom:3px">4-5-1</div>
+          <div style="font-size:8px;line-height:1.6;color:#aaa">
+            <div>⬤</div>
+            <div>⬤ ⬤ ⬤ ⬤</div>
+            <div>⬤ ⬤ ⬤</div>
+            <div>⬤ ⬤</div>
+            <div style="color:#4fc3f7">⬤</div>
+          </div>
+        </div>
+        <!-- Tactic ranking -->
+        <div style="background:#1a2a3a;border-radius:4px;padding:6px">
+          <div style="color:#ccc;font-weight:600;margin-bottom:4px">Tattiche</div>
+          <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">
+            <span style="background:#1e3a1e;color:#66bb6a;padding:1px 4px;border-radius:2px;font-size:9px">1°</span>
+            <span style="color:#ccc;font-size:9px">Pressing</span>
+            <div style="flex:1;background:#243444;border-radius:1px;height:5px"><div style="background:#66bb6a;width:85%;height:100%;border-radius:1px"></div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">
+            <span style="background:#243444;color:#aaa;padding:1px 4px;border-radius:2px;font-size:9px">2°</span>
+            <span style="color:#aaa;font-size:9px">Contropiede</span>
+            <div style="flex:1;background:#243444;border-radius:1px;height:5px"><div style="background:#778899;width:60%;height:100%;border-radius:1px"></div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <span style="background:#243444;color:#556677;padding:1px 4px;border-radius:2px;font-size:9px">3°</span>
+            <span style="color:#556677;font-size:9px">Att. Centro</span>
+            <div style="flex:1;background:#243444;border-radius:1px;height:5px"><div style="background:#445566;width:40%;height:100%;border-radius:1px"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Status bar + campo + ranking</h3>
+      <p>Barra di stato in cima con dati chiave. Pitch mini affiancato al ranking delle tattiche con barre comparative. Layout denso ma tutto a colpo d'occhio.</p>
+    </div>
+  </div>
+
+</div>

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<HattrickData>
+  <Version>2.7</Version>
+  <UserID>123456</UserID>
+  <Fetcheddate>2026-05-17 10:00:00</Fetcheddate>
+  <IsYouthTeam>False</IsYouthTeam>
+  <IsPlayingMatch>False</IsPlayingMatch>
+  <Team>
+    <TeamID>654321</TeamID>
+    <TeamName>My Team FC</TeamName>
+    <Players>
+      <Player>
+        <PlayerID>1000001</PlayerID>
+        <FirstName>John</FirstName>
+        <LastName>Doe</LastName>
+        <Age>25</Age>
+        <AgeDays>100</AgeDays>
+        <TSI>4200</TSI>
+        <PlayerForm>7</PlayerForm>
+        <InjuryLevel>-1</InjuryLevel>
+        <Salary>7800</Salary>
+        <Stamina>8</Stamina>
+        <Goalkeeper>5</Goalkeeper>
+        <Defending>6</Defending>
+        <Playmaking>8</Playmaking>
+        <Winger>4</Winger>
+        <Passing>7</Passing>
+        <Scoring>9</Scoring>
+        <SetPieces>3</SetPieces>
+      </Player>
+      <Player>
+        <PlayerID>1000002</PlayerID>
+        <FirstName>Marco</FirstName>
+        <LastName>Rossi</LastName>
+        <Age>28</Age>
+        <AgeDays>50</AgeDays>
+        <TSI>6800</TSI>
+        <PlayerForm>5</PlayerForm>
+        <InjuryLevel>2</InjuryLevel>
+        <Salary>11200</Salary>
+        <Stamina>6</Stamina>
+        <Goalkeeper>2</Goalkeeper>
+        <Defending>10</Defending>
+        <Playmaking>7</Playmaking>
+        <Winger>3</Winger>
+        <Passing>8</Passing>
+        <Scoring>4</Scoring>
+        <SetPieces>5</SetPieces>
+      </Player>
+    </Players>
+  </Team>
+</HattrickData>

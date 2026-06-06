@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="utf-8"?>
+<HattrickData>
+  <FileName>matches.xml</FileName>
+  <Version>2.9</Version>
+  <UserID>1862337</UserID>
+  <FetchedDate>2026-05-22 22:46:22</FetchedDate>
+  <IsYouth>False</IsYouth>
+  <Team>
+    <TeamID>549298</TeamID>
+    <TeamName>Sesto San Juan</TeamName>
+    <ShortTeamName>Juanin</ShortTeamName>
+    <League>
+      <LeagueID>4</LeagueID>
+      <LeagueName>Italia</LeagueName>
+    </League>
+    <LeagueLevelUnit>
+      <LeagueLevelUnitID>28706</LeagueLevelUnitID>
+      <LeagueLevelUnitName>VI.5</LeagueLevelUnitName>
+      <LeagueLevel>6</LeagueLevel>
+    </LeagueLevelUnit>
+    <MatchList>
+      <Match>
+        <MatchID>762443851</MatchID>
+        <HomeTeam>
+          <HomeTeamID>549298</HomeTeamID>
+          <HomeTeamName>Sesto San Juan</HomeTeamName>
+          <HomeTeamNameShortName>Juanin</HomeTeamNameShortName>
+        </HomeTeam>
+        <AwayTeam>
+          <AwayTeamID>237132</AwayTeamID>
+          <AwayTeamName>i tarallos</AwayTeamName>
+          <AwayTeamNameShortName>tarallos</AwayTeamNameShortName>
+        </AwayTeam>
+        <MatchDate>2026-04-25 12:00:00</MatchDate>
+        <SourceSystem>Hattrick</SourceSystem>
+        <MatchType>1</MatchType>
+        <MatchContextId>28706</MatchContextId>
+        <CupLevel>0</CupLevel>
+        <CupLevelIndex>0</CupLevelIndex>
+        <HomeGoals>1</HomeGoals>
+        <AwayGoals>4</AwayGoals>
+        <Status>FINISHED</Status>
+      </Match>
+      <Match>
+        <MatchID>765935521</MatchID>
+        <HomeTeam>
+          <HomeTeamID>549298</HomeTeamID>
+          <HomeTeamName>Sesto San Juan</HomeTeamName>
+          <HomeTeamNameShortName>Juanin</HomeTeamNameShortName>
+        </HomeTeam>
+        <AwayTeam>
+          <AwayTeamID>2342314</AwayTeamID>
+          <AwayTeamName>TufelloClub</AwayTeamName>
+          <AwayTeamNameShortName>TufelloClub</AwayTeamNameShortName>
+        </AwayTeam>
+        <MatchDate>2026-04-28 19:15:00</MatchDate>
+        <SourceSystem>Hattrick</SourceSystem>
+        <MatchType>3</MatchType>
+        <MatchContextId>515</MatchContextId>
+        <CupLevel>2</CupLevel>
+        <CupLevelIndex>1</CupLevelIndex>
+        <HomeGoals>4</HomeGoals>
+        <AwayGoals>1</AwayGoals>
+        <Status>FINISHED</Status>
+      </Match>
+      <Match>
+        <MatchID>762443854</MatchID>
+        <HomeTeam>
+          <HomeTeamID>1923710</HomeTeamID>
+          <HomeTeamName>Mandrovia Utd</HomeTeamName>
+          <HomeTeamNameShortName>Mandrovia</HomeTeamNameShortName>
+        </HomeTeam>
+        <AwayTeam>
+          <AwayTeamID>549298</AwayTeamID>
+          <AwayTeamName>Sesto San Juan</AwayTeamName>
+          <AwayTeamNameShortName>Juanin</AwayTeamNameShortName>
+        </AwayTeam>
+        <MatchDate>2026-05-02 12:00:00</MatchDate>
+        <SourceSystem>Hattrick</SourceSystem>
+        <MatchType>1</MatchType>
+        <MatchContextId>28706</MatchContextId>
+        <CupLevel>0</CupLevel>
+        <CupLevelIndex>0</CupLevelIndex>
+        <HomeGoals>2</HomeGoals>
+        <AwayGoals>2</AwayGoals>
+        <Status>FINISHED</Status>
+      </Match>
+      <Match>
+        <MatchID>766049781</MatchID>
+        <HomeTeam>
+          <HomeTeamID>2181542</HomeTeamID>
+          <HomeTeamName>SuperVitto</HomeTeamName>
+          <HomeTeamNameShortName>SuperVitto</HomeTeamNameShortName>
+        </HomeTeam>
+        <AwayTeam>
+          <AwayTeamID>549298</AwayTeamID>
+          <AwayTeamName>Sesto San Juan</AwayTeamName>
+          <AwayTeamNameShortName>Juanin</AwayTeamNameShortName>
+        </AwayTeam>
+        <MatchDate>2026-05-05 19:15:00</MatchDate>
+        <SourceSystem>Hattrick</SourceSystem>
+        <MatchType>3</MatchType>
+        <MatchContextId>515</MatchContextId>
+        <CupLevel>2</CupLevel>
+        <CupLevelIndex>1</CupLevelIndex>
+        <HomeGoals>2</HomeGoals>
+        <AwayGoals>0</AwayGoals>
+        <Status>FINISHED</Status>
+      </Match>
+      <Match>
+        <MatchID>762443857</MatchID>
+        <HomeTeam>
+          <HomeTeamID>549298</HomeTeamID>
+          <HomeTeamName>Sesto San Juan</HomeTeamName>
+          <HomeTeamNameShortName>Juanin</HomeTeamNameShortName>
+        </HomeTeam>
+        <AwayTeam>
+          <AwayTeamID>728316</AwayTeamID>
+          <AwayTeamName>real volley f.c.</AwayTeamName>
+          <AwayTeamNameShortName>volley</AwayTeamNameShortName>
+        </AwayTeam>
+        <MatchDate>2026-05-09 12:00:00</MatchDate>
+        <SourceSystem>Hattrick</SourceSystem>
+        <MatchType>1</MatchType>
+        <MatchContextId>28706</MatchContextId>
+        <CupLevel>0</CupLevel>
+        <CupLevelIndex>0</CupLevelIndex>
+        <HomeGoals>0</HomeGoals>
+        <AwayGoals>0</AwayGoals>
+        <Status>FINISHED</Status>
+      </Match>
+      <Match>
+        <MatchID>766189965</MatchID>
+        <HomeTeam>
+          <HomeTeamID>2131388</HomeTeamID>
+          <HomeTeamName>Ginevra 2019</HomeTeamName>
+          <HomeTeamNameShortName>Ginevra</HomeTeamNameShortName>
+        </HomeTeam>
+        <AwayTeam>
+          <AwayTeamID>549298</AwayTeamID>
+          <AwayTeamName>Sesto San Juan</AwayTeamName>
+          <AwayTeamNameShortName>Juanin</AwayTeamNameShortName>
+        </AwayTeam>
+        <MatchDate>2026-05-12 19:05:00</MatchDate>
+        <SourceSystem>Hattrick</SourceSystem>
+        <MatchType>4</MatchType>
+        <MatchContextId>0</MatchContextId>
+        <CupLevel>0</CupLevel>
+        <CupLevelIndex>0</CupLevelIndex>
+        <HomeGoals>6</HomeGoals>
+        <AwayGoals>2</AwayGoals>
+        <Status>FINISHED</Status>
+      </Match>
+      <Match>
+        <MatchID>762443863</MatchID>
+        <HomeTeam>
+          <HomeTeamID>547412</HomeTeamID>
+          <HomeTeamName>Pace-Mela</HomeTeamName>
+          <HomeTeamNameShortName>Pace-Mela</HomeTeamNameShortName>
+        </HomeTeam>
+        <AwayTeam>
+          <AwayTeamID>549298</AwayTeamID>
+          <AwayTeamName>Sesto San Juan</AwayTeamName>
+          <AwayTeamNameShortName>Juanin</AwayTeamNameShortName>
+        </AwayTeam>
+        <MatchDate>2026-05-16 12:00:00</MatchDate>
+        <SourceSystem>Hattrick</SourceSystem>
+        <MatchType>1</MatchType>
+        <MatchContextId>28706</MatchContextId>
+        <CupLevel>0</CupLevel>
+        <CupLevelIndex>0</CupLevelIndex>
+        <HomeGoals>3</HomeGoals>
+        <AwayGoals>3</AwayGoals>
+        <Status>FINISHED</Status>
+      </Match>
+      <Match>
+        <MatchID>766295721</MatchID>
+        <HomeTeam>
+          <HomeTeamID>893937</HomeTeamID>
+          <HomeTeamName>FC Pelikáni</HomeTeamName>
+          <HomeTeamNameShortName>Pelikáni</HomeTeamNameShortName>
+        </HomeTeam>
+        <AwayTeam>
+          <AwayTeamID>549298</AwayTeamID>
+          <AwayTeamName>Sesto San Juan</AwayTeamName>
+          <AwayTeamNameShortName>Juanin</AwayTeamNameShortName>
+        </AwayTeam>
+        <MatchDate>2026-05-20 14:00:00</MatchDate>
+        <SourceSystem>Hattrick</SourceSystem>
+        <MatchType>9</MatchType>
+        <MatchContextId>0</MatchContextId>
+        <CupLevel>0</CupLevel>
+        <CupLevelIndex>0</CupLevelIndex>
+        <HomeGoals>2</HomeGoals>
+        <AwayGoals>1</AwayGoals>
+        <Status>FINISHED</Status>
+      </Match>
+      <Match>
+        <MatchID>762443868</MatchID>
+        <HomeTeam>
+          <HomeTeamID>549298</HomeTeamID>
+          <HomeTeamName>Sesto San Juan</HomeTeamName>
+          <HomeTeamNameShortName>Juanin</HomeTeamNameShortName>
+        </HomeTeam>
+        <AwayTeam>
+          <AwayTeamID>547412</AwayTeamID>
+          <AwayTeamName>Pace-Mela</AwayTeamName>
+          <AwayTeamNameShortName>Pace-Mela</AwayTeamNameShortName>
+        </AwayTeam>
+        <MatchDate>2026-05-23 12:00:00</MatchDate>
+        <SourceSystem>Hattrick</SourceSystem>
+        <MatchType>1</MatchType>
+        <MatchContextId>28706</MatchContextId>
+        <CupLevel>0</CupLevel>
+        <CupLevelIndex>0</CupLevelIndex>
+        <OrdersGiven>True</OrdersGiven>
+        <Status>UPCOMING</Status>
+      </Match>
+      <Match>
+        <MatchID>766380261</MatchID>
+        <HomeTeam>
+          <HomeTeamID>36568</HomeTeamID>
+          <HomeTeamName>sconcshii</HomeTeamName>
+          <HomeTeamNameShortName>sconcshii</HomeTeamNameShortName>
+        </HomeTeam>
+        <AwayTeam>
+          <AwayTeamID>549298</AwayTeamID>
+          <AwayTeamName>Sesto San Juan</AwayTeamName>
+          <AwayTeamNameShortName>Juanin</AwayTeamNameShortName>
+        </AwayTeam>
+        <MatchDate>2026-05-27 10:00:00</MatchDate>
+        <SourceSystem>Hattrick</SourceSystem>
+        <MatchType>8</MatchType>
+        <MatchContextId>0</MatchContextId>
+        <CupLevel>0</CupLevel>
+        <CupLevelIndex>0</CupLevelIndex>
+        <OrdersGiven>False</OrdersGiven>
+        <Status>UPCOMING</Status>
+      </Match>
+      <Match>
+        <MatchID>762443873</MatchID>
+        <HomeTeam>
+          <HomeTeamID>728316</HomeTeamID>
+          <HomeTeamName>real volley f.c.</HomeTeamName>
+          <HomeTeamNameShortName>volley</HomeTeamNameShortName>
+        </HomeTeam>
+        <AwayTeam>
+          <AwayTeamID>549298</AwayTeamID>
+          <AwayTeamName>Sesto San Juan</AwayTeamName>
+          <AwayTeamNameShortName>Juanin</AwayTeamNameShortName>
+        </AwayTeam>
+        <MatchDate>2026-05-30 12:00:00</MatchDate>
+        <SourceSystem>Hattrick</SourceSystem>
+        <MatchType>1</MatchType>
+        <MatchContextId>28706</MatchContextId>
+        <CupLevel>0</CupLevel>
+        <CupLevelIndex>0</CupLevelIndex>
+        <OrdersGiven>False</OrdersGiven>
+        <Status>UPCOMING</Status>
+      </Match>
+      <Match>
+        <MatchID>762443876</MatchID>
+        <HomeTeam>
+          <HomeTeamID>549298</HomeTeamID>
+          <HomeTeamName>Sesto San Juan</HomeTeamName>
+          <HomeTeamNameShortName>Juanin</HomeTeamNameShortName>
+        </HomeTeam>
+        <AwayTeam>
+          <AwayTeamID>1923710</AwayTeamID>
+          <AwayTeamName>Mandrovia Utd</AwayTeamName>
+          <AwayTeamNameShortName>Mandrovia</AwayTeamNameShortName>
+        </AwayTeam>
+        <MatchDate>2026-06-06 12:00:00</MatchDate>
+        <SourceSystem>Hattrick</SourceSystem>
+        <MatchType>1</MatchType>
+        <MatchContextId>28706</MatchContextId>
+        <CupLevel>0</CupLevel>
+        <CupLevelIndex>0</CupLevelIndex>
+        <OrdersGiven>False</OrdersGiven>
+        <Status>UPCOMING</Status>
+      </Match>
+      <Match>
+        <MatchID>762443877</MatchID>
+        <HomeTeam>
+          <HomeTeamID>237132</HomeTeamID>
+          <HomeTeamName>i tarallos</HomeTeamName>
+          <HomeTeamNameShortName>tarallos</HomeTeamNameShortName>
+        </HomeTeam>
+        <AwayTeam>
+          <AwayTeamID>549298</AwayTeamID>
+          <AwayTeamName>Sesto San Juan</AwayTeamName>
+          <AwayTeamNameShortName>Juanin</AwayTeamNameShortName>
+        </AwayTeam>
+        <MatchDate>2026-06-13 12:00:00</MatchDate>
+        <SourceSystem>Hattrick</SourceSystem>
+        <MatchType>1</MatchType>
+        <MatchContextId>28706</MatchContextId>
+        <CupLevel>0</CupLevel>
+        <CupLevelIndex>0</CupLevelIndex>
+        <OrdersGiven>False</OrdersGiven>
+        <Status>UPCOMING</Status>
+      </Match>
+    </MatchList>
+  </Team>
+</HattrickData>
