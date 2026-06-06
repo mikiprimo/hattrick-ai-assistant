@@ -67,18 +67,18 @@ def _parse_league(cfg: configparser.ConfigParser) -> dict:
         return {}
     sec = cfg["league"]
 
-    def i(k: str) -> int:
+    def to_int(k: str) -> int:
         try:
             return int(sec.get(k, "0"))
         except (ValueError, TypeError):
             return 0
 
     return {
-        "position": i("placering"),
-        "points": i("poang"),
-        "played": i("spelade"),
-        "goals_for": i("gjorda"),
-        "goals_against": i("inslappta"),
+        "position": to_int("placering"),
+        "points": to_int("poang"),
+        "played": to_int("spelade"),
+        "goals_for": to_int("gjorda"),
+        "goals_against": to_int("inslappta"),
         "series": sec.get("serie", "").strip(),
     }
 
@@ -135,7 +135,7 @@ def parse_hrf_file(file_path: str) -> HRFSnapshot:
 
 
 def _parse_player(player_id: int, sec: configparser.SectionProxy) -> HRFPlayer:
-    def i(key: str, default: int = 0) -> int:
+    def to_int(key: str, default: int = 0) -> int:
         raw = sec.get(key, "").strip()
         if not raw:
             return default
@@ -144,41 +144,41 @@ def _parse_player(player_id: int, sec: configparser.SectionProxy) -> HRFPlayer:
         except (ValueError, TypeError):
             return default
 
-    def f(key: str) -> Optional[float]:
+    def to_float(key: str) -> Optional[float]:
         try:
             v = sec.get(key, "").strip()
             return float(v) if v else None
         except (ValueError, TypeError):
             return None
 
-    def b(key: str) -> bool:
+    def to_bool(key: str) -> bool:
         return sec.get(key, "False").strip().lower() == "true"
 
     return HRFPlayer(
         player_id=player_id,
         first_name=sec.get("firstname", "").strip(),
         last_name=sec.get("lastname", "").strip(),
-        age=i("ald"),
-        age_days=i("agedays"),
-        salary=i("sal"),
-        injury_days=i("ska", -1),
-        form=i("for"),
-        stamina=i("uth"),
-        speed=i("spe"),
-        scoring=i("mal"),
-        passing=i("fra"),
-        winger=i("ytt"),
-        defending=i("fas"),
-        playmaking=i("bac"),
-        goalkeeper=i("mlv"),
-        set_pieces=i("rut"),
-        leadership=i("led"),
-        experience=i("gev"),
-        loyalty=i("loy"),
-        market_value=i("mkt"),
+        age=to_int("ald"),
+        age_days=to_int("agedays"),
+        salary=to_int("sal"),
+        injury_days=to_int("ska", -1),
+        form=to_int("for"),
+        stamina=to_int("uth"),
+        speed=to_int("spe"),
+        scoring=to_int("mal"),
+        passing=to_int("fra"),
+        winger=to_int("ytt"),
+        defending=to_int("fas"),
+        playmaking=to_int("bac"),
+        goalkeeper=to_int("mlv"),
+        set_pieces=to_int("rut"),
+        leadership=to_int("led"),
+        experience=to_int("gev"),
+        loyalty=to_int("loy"),
+        market_value=to_int("mkt"),
         speciality=sec.get("specialityLabel", "").strip() or None,
-        last_match_rating=f("LastMatch_Rating"),
-        transfer_listed=b("TransferListed"),
-        country_id=i("CountryID") or None,
-        homegrown=b("homegr"),
+        last_match_rating=to_float("LastMatch_Rating"),
+        transfer_listed=to_bool("TransferListed"),
+        country_id=to_int("CountryID") or None,
+        homegrown=to_bool("homegr"),
     )

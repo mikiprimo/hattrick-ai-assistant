@@ -65,8 +65,8 @@ const columns = [
     header: 'Att.',
     cell: (info) => <SkillBar value={info.getValue()} />,
   }),
-  col.accessor('passing', {
-    header: 'Pass.',
+  col.accessor('speed', {
+    header: 'Vel.',
     cell: (info) => <SkillBar value={info.getValue()} />,
   }),
   col.accessor('salary', {

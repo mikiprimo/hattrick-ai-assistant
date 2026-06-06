@@ -20,9 +20,12 @@ def run_migrations(engine) -> None:
             ("homegrown",         "BOOLEAN DEFAULT 0"),
             ("data_source",       "TEXT DEFAULT 'HRF'"),
         ]
+        allowed = {name for name, _ in new_cols}
         with engine.begin() as conn:
             for col_name, col_def in new_cols:
                 if col_name not in existing:
+                    if col_name not in allowed:
+                        raise ValueError(f"Unexpected column in migration: {col_name}")
                     conn.execute(text(f"ALTER TABLE players ADD COLUMN {col_name} {col_def}"))
 
     # Drop formation_xp and match_prep if they have old incompatible schemas

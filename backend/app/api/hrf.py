@@ -17,6 +17,26 @@ from app.hrf.parser import _extract_filename_metadata
 
 router = APIRouter()
 
+_SKILL_FIELDS = (
+    "form", "stamina", "speed", "scoring", "passing", "winger",
+    "defending", "playmaking", "goalkeeper", "set_pieces",
+    "leadership", "experience", "loyalty",
+)
+
+
+def _player_fields(hp) -> dict:
+    return {
+        "first_name": hp.first_name, "last_name": hp.last_name,
+        "age": hp.age, "age_days": hp.age_days,
+        "salary": hp.salary, "injury_days": hp.injury_days,
+        **{f: getattr(hp, f) for f in _SKILL_FIELDS},
+        "market_value": hp.market_value, "speciality": hp.speciality,
+        "last_match_rating": hp.last_match_rating,
+        "transfer_listed": hp.transfer_listed,
+        "country_id": hp.country_id, "homegrown": hp.homegrown,
+        "data_source": "HRF",
+    }
+
 
 class HRFSettingsRequest(BaseModel):
     hrf_folder_path: str
@@ -34,8 +54,12 @@ def get_hrf_settings(db: Session = Depends(get_db)):
 
 @router.post("/hrf/settings")
 def set_hrf_settings(body: HRFSettingsRequest, db: Session = Depends(get_db)):
-    if not Path(body.hrf_folder_path).exists():
+    resolved = Path(body.hrf_folder_path).resolve()
+    if not resolved.exists():
         raise HTTPException(status_code=400, detail=f"Path not found: {body.hrf_folder_path}")
+    if not resolved.is_dir():
+        raise HTTPException(status_code=400, detail="Path must be a directory")
+    body = body.model_copy(update={"hrf_folder_path": str(resolved)})
     s = db.query(HRFSettings).first()
     if s:
         s.hrf_folder_path = body.hrf_folder_path
@@ -63,20 +87,7 @@ def scan_and_import(db: Session = Depends(get_db)):
 
     for snapshot in snapshots:
         for hp in snapshot.players:
-            fields = {
-                "first_name": hp.first_name, "last_name": hp.last_name,
-                "age": hp.age, "age_days": hp.age_days,
-                "salary": hp.salary, "injury_days": hp.injury_days,
-                "form": hp.form, "stamina": hp.stamina, "speed": hp.speed,
-                "scoring": hp.scoring, "passing": hp.passing, "winger": hp.winger,
-                "defending": hp.defending, "playmaking": hp.playmaking,
-                "goalkeeper": hp.goalkeeper, "set_pieces": hp.set_pieces,
-                "leadership": hp.leadership, "experience": hp.experience,
-                "loyalty": hp.loyalty, "market_value": hp.market_value,
-                "speciality": hp.speciality, "last_match_rating": hp.last_match_rating,
-                "transfer_listed": hp.transfer_listed, "country_id": hp.country_id,
-                "homegrown": hp.homegrown, "data_source": "HRF",
-            }
+            fields = _player_fields(hp)
             existing = db.get(Player, hp.player_id)
             if existing:
                 for k, v in fields.items():
@@ -89,16 +100,12 @@ def scan_and_import(db: Session = Depends(get_db)):
                 player_id=hp.player_id, snapshot_date=snapshot.snapshot_date
             ).first()
             if not already:
+                skill_vals = {f: getattr(hp, f) for f in _SKILL_FIELDS}
                 db.add(PlayerSkillHistory(
                     player_id=hp.player_id,
                     snapshot_date=snapshot.snapshot_date,
                     source="HRF",
-                    form=hp.form, stamina=hp.stamina, speed=hp.speed,
-                    scoring=hp.scoring, passing=hp.passing, winger=hp.winger,
-                    defending=hp.defending, playmaking=hp.playmaking,
-                    goalkeeper=hp.goalkeeper, set_pieces=hp.set_pieces,
-                    leadership=hp.leadership, experience=hp.experience,
-                    loyalty=hp.loyalty,
+                    **skill_vals,
                 ))
 
         if snapshot.match_data:

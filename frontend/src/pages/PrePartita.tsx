@@ -8,7 +8,35 @@ import {
 const FORMATIONS = ['4-4-2','3-5-2','4-3-3','3-4-3','5-4-1','4-5-1','5-3-2','5-2-3','5-5-0','2-5-3']
 const XP_LABELS = ['Insufficiente','Debole','Debole','Debole','Debole','Debole','Debole','Debole','Accettabile','Accettabile','Accettabile','Accettabile','Buono','Buono','Buono','Buono','Eccellente','Eccellente','Eccellente','Eccellente','Leggendario']
 
+const ATTITUDE_LABELS: Record<string, string> = {
+  normal: 'Normale', mots: 'Partita della Stagione', cool: 'Partitella',
+}
+
+const LINE_LABEL: Record<string, string> = {
+  goalkeeper: 'Portiere', defense: 'Difesa', midfield: 'Centrocampo', attack: 'Attacco',
+}
+
 type Step = 1 | 2 | 3
+
+function StepHeader({ step }: { step: Step }) {
+  return (
+    <div style={{ display: 'flex', gap: 0, marginBottom: 24 }}>
+      {(['La tua squadra', 'Avversario', 'Analisi'] as const).map((label, i) => {
+        const n = (i + 1) as Step
+        const active = step === n
+        const done = step > n
+        return (
+          <div key={n} style={{ flex: 1, textAlign: 'center', padding: '10px 0',
+            borderBottom: `3px solid ${active ? '#3b82f6' : done ? '#10b981' : '#e5e7eb'}`,
+            color: active ? '#3b82f6' : done ? '#10b981' : '#9ca3af',
+            fontWeight: active ? 600 : 400, fontSize: 14 }}>
+            {done ? '✓ ' : `${n}. `}{label}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 export function PrePartita() {
   const [step, setStep] = useState<Step>(1)
@@ -63,27 +91,9 @@ export function PrePartita() {
   const btnPrimary: React.CSSProperties = { background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 20px', cursor: 'pointer', fontSize: 14, fontWeight: 600 }
   const btnSecondary: React.CSSProperties = { background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 6, padding: '8px 20px', cursor: 'pointer', fontSize: 14 }
 
-  const StepHeader = () => (
-    <div style={{ display: 'flex', gap: 0, marginBottom: 24 }}>
-      {(['La tua squadra', 'Avversario', 'Analisi'] as const).map((label, i) => {
-        const n = (i + 1) as Step
-        const active = step === n
-        const done = step > n
-        return (
-          <div key={n} style={{ flex: 1, textAlign: 'center', padding: '10px 0',
-            borderBottom: `3px solid ${active ? '#3b82f6' : done ? '#10b981' : '#e5e7eb'}`,
-            color: active ? '#3b82f6' : done ? '#10b981' : '#9ca3af',
-            fontWeight: active ? 600 : 400, fontSize: 14 }}>
-            {done ? '✓ ' : `${n}. `}{label}
-          </div>
-        )
-      })}
-    </div>
-  )
-
   if (step === 1) return (
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
-      <StepHeader />
+      <StepHeader step={step} />
       <div style={sectionStyle}>
         <h3 style={{ margin: '0 0 16px', fontSize: 16 }}>Condizioni della squadra</h3>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -153,7 +163,7 @@ export function PrePartita() {
 
   if (step === 2) return (
     <div style={{ maxWidth: 700, margin: '0 auto' }}>
-      <StepHeader />
+      <StepHeader step={step} />
       <div style={sectionStyle}>
         <h3 style={{ margin: '0 0 16px', fontSize: 16 }}>Tipo partita</h3>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -208,14 +218,6 @@ export function PrePartita() {
 
   const { my_team, opponent, tactic_ranking, attitude, explanation } = analysis
 
-  const ATTITUDE_LABELS: Record<string, string> = {
-    normal: 'Normale', mots: 'Partita della Stagione', cool: 'Partitella'
-  }
-
-  const LINE_LABEL: Record<string, string> = {
-    goalkeeper: 'Portiere', defense: 'Difesa', midfield: 'Centrocampo', attack: 'Attacco'
-  }
-
   // Collect starting XI ids from lineup
   const startingIds = new Set(
     Object.values(my_team.lineup).flatMap(arr => arr.map(p => p.id))
@@ -263,7 +265,7 @@ export function PrePartita() {
 
   return (
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
-      <StepHeader />
+      <StepHeader step={step} />
 
       <div style={{ ...sectionStyle, borderLeft: '4px solid #3b82f6' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
@@ -284,12 +286,11 @@ export function PrePartita() {
       <div style={sectionStyle}>
         <h3 style={{ margin: '0 0 16px', fontSize: 16 }}>Formazione schierata</h3>
         {(['goalkeeper','defense','midfield','attack'] as const).map(line => {
-          const lineLabels: Record<string, string> = { goalkeeper: 'Portiere', defense: 'Difesa', midfield: 'Centrocampo', attack: 'Attacco' }
           const players = my_team.lineup[line] ?? []
           if (players.length === 0) return null
           return (
             <div key={line} style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'flex-start' }}>
-              <span style={{ fontSize: 12, color: '#6b7280', width: 100, flexShrink: 0, paddingTop: 2 }}>{lineLabels[line]}</span>
+              <span style={{ fontSize: 12, color: '#6b7280', width: 100, flexShrink: 0, paddingTop: 2 }}>{LINE_LABEL[line]}</span>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {players.map(p => (
                   <span key={p.id} style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6,
@@ -359,11 +360,10 @@ export function PrePartita() {
         {(['goalkeeper','defense','midfield','attack'] as const).map(line => {
           const myVal = my_team.modified_ratings[line] ?? 0
           const oppVal = opponent.line_ratings[line] ?? 0
-          const labels: Record<string, string> = { goalkeeper: 'Portiere', defense: 'Difesa', midfield: 'Centrocampo', attack: 'Attacco' }
           return (
             <div key={line} style={{ marginBottom: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-                <span style={{ color: '#374151' }}>{labels[line]}</span>
+                <span style={{ color: '#374151' }}>{LINE_LABEL[line]}</span>
                 <span>
                   <span style={{ color: myVal >= oppVal ? '#059669' : '#dc2626', fontWeight: 600 }}>{myVal.toFixed(1)}</span>
                   <span style={{ color: '#9ca3af', margin: '0 6px' }}>vs</span>
