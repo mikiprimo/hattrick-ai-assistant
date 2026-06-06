@@ -1,294 +1,298 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { getPrePartitaSquad, analyzeOpponent } from '../api/pre_partita'
-import type { AnalysisResult, SquadPlayer } from '../api/pre_partita'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import {
+  getPrePartitaSquad, getFormationXP, analyzeOpponent, saveAnalysis,
+  type AnalysisResult,
+} from '../api/pre_partita'
 
-const card: React.CSSProperties = {
-  background: '#fff',
-  borderRadius: 8,
-  border: '1px solid #e5e7eb',
-  padding: '12px 16px',
-  marginBottom: 12,
-}
+const FORMATIONS = ['4-4-2','3-5-2','4-3-3','3-4-3','5-4-1','4-5-1','5-3-2','5-2-3','5-5-0','2-5-3']
+const XP_LABELS = ['Insufficiente','Debole','Debole','Debole','Debole','Debole','Debole','Debole','Accettabile','Accettabile','Accettabile','Accettabile','Buono','Buono','Buono','Buono','Eccellente','Eccellente','Eccellente','Eccellente','Leggendario']
 
-const LINE_LABELS: Record<string, string> = {
-  goalkeeper: 'Portiere',
-  defense: 'Difesa',
-  midfield: 'Centrocampo',
-  attack: 'Attacco',
-}
+type Step = 1 | 2 | 3
 
-const RESULT_STYLE: Record<string, React.CSSProperties> = {
-  W: { background: '#dcfce7', color: '#16a34a' },
-  D: { background: '#fef9c3', color: '#854d0e' },
-  L: { background: '#fee2e2', color: '#dc2626' },
-}
+export function PrePartita() {
+  const [step, setStep] = useState<Step>(1)
 
-function LineBars({
-  myRatings,
-  oppRatings,
-}: {
-  myRatings: Record<string, number>
-  oppRatings: Record<string, number>
-}) {
-  const lines = ['goalkeeper', 'defense', 'midfield', 'attack']
-  const max = 20
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      {lines.map(line => {
-        const my = myRatings[line] ?? 0
-        const opp = oppRatings[line] ?? 0
+  const [spirit, setSpirit] = useState(10)
+  const [confidence, setConfidence] = useState(10)
+  const [formationXP, setFormationXP] = useState<Record<string, number>>({})
+
+  const [playersXml, setPlayersXml] = useState('')
+  const [matchesXml, setMatchesXml] = useState('')
+  const [matchType, setMatchType] = useState<'league'|'cup'|'friendly'>('league')
+
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
+  const [saved, setSaved] = useState(false)
+
+  const squadQ = useQuery({ queryKey: ['pre-partita-squad'], queryFn: getPrePartitaSquad })
+  useQuery({
+    queryKey: ['formation-xp'],
+    queryFn: getFormationXP,
+    onSuccess: (data: { formation_xp: Record<string, number> }) => setFormationXP(data.formation_xp),
+  })
+
+  const analyzeMut = useMutation({
+    mutationFn: () => analyzeOpponent({
+      players_xml: playersXml,
+      matches_xml: matchesXml,
+      match_type: matchType,
+      spirit,
+      confidence,
+      formation_xp: formationXP,
+    }),
+    onSuccess: (data: AnalysisResult) => { setAnalysis(data); setStep(3); setSaved(false) },
+  })
+
+  const saveMut = useMutation({
+    mutationFn: () => saveAnalysis({
+      analysis: analysis!,
+      my_spirit: spirit,
+      my_confidence: confidence,
+      my_attitude: analysis!.attitude.attitude,
+      match_type: matchType,
+    }),
+    onSuccess: () => setSaved(true),
+  })
+
+  const inputStyle: React.CSSProperties = {
+    border: '1px solid #d1d5db', borderRadius: 6, padding: '6px 10px',
+    fontSize: 14, width: '100%', boxSizing: 'border-box',
+  }
+  const labelStyle: React.CSSProperties = { fontSize: 13, color: '#6b7280', marginBottom: 4, display: 'block' }
+  const sectionStyle: React.CSSProperties = { background: '#fff', borderRadius: 8, padding: 20, marginBottom: 16, boxShadow: '0 1px 3px rgba(0,0,0,.08)' }
+  const btnPrimary: React.CSSProperties = { background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 20px', cursor: 'pointer', fontSize: 14, fontWeight: 600 }
+  const btnSecondary: React.CSSProperties = { background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 6, padding: '8px 20px', cursor: 'pointer', fontSize: 14 }
+
+  const StepHeader = () => (
+    <div style={{ display: 'flex', gap: 0, marginBottom: 24 }}>
+      {(['La tua squadra', 'Avversario', 'Analisi'] as const).map((label, i) => {
+        const n = (i + 1) as Step
+        const active = step === n
+        const done = step > n
         return (
-          <div key={line}>
-            <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 2 }}>
-              {LINE_LABELS[line]} {my > opp ? '✅' : ''}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 36, textAlign: 'right', fontSize: 11, color: '#1d4ed8', fontWeight: my > opp ? 600 : 400 }}>
-                {my.toFixed(1)}
-              </span>
-              <div style={{ flex: 1, height: 12, background: '#e5e7eb', borderRadius: 6, position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', left: 0, top: 0, width: `${(my / max) * 100}%`, height: '100%', background: '#3b82f6', borderRadius: '6px 0 0 6px', opacity: 0.8 }} />
-                <div style={{ position: 'absolute', right: 0, top: 0, width: `${(opp / max) * 100}%`, height: '100%', background: '#ef4444', borderRadius: '0 6px 6px 0', opacity: 0.5 }} />
-              </div>
-              <span style={{ width: 36, fontSize: 11, color: '#dc2626' }}>{opp.toFixed(1)}</span>
-            </div>
+          <div key={n} style={{ flex: 1, textAlign: 'center', padding: '10px 0',
+            borderBottom: `3px solid ${active ? '#3b82f6' : done ? '#10b981' : '#e5e7eb'}`,
+            color: active ? '#3b82f6' : done ? '#10b981' : '#9ca3af',
+            fontWeight: active ? 600 : 400, fontSize: 14 }}>
+            {done ? '✓ ' : `${n}. `}{label}
           </div>
         )
       })}
-      <div style={{ display: 'flex', gap: 10, marginTop: 2, fontSize: 9, color: '#6b7280' }}>
-        <span><span style={{ color: '#3b82f6' }}>■</span> Tu</span>
-        <span><span style={{ color: '#ef4444' }}>■</span> Avversario</span>
+    </div>
+  )
+
+  if (step === 1) return (
+    <div style={{ maxWidth: 700, margin: '0 auto' }}>
+      <StepHeader />
+      <div style={sectionStyle}>
+        <h3 style={{ margin: '0 0 16px', fontSize: 16 }}>Condizioni della squadra</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div>
+            <label style={labelStyle}>Spirito di squadra (1–20): <strong>{spirit}</strong></label>
+            <input type="range" min={1} max={20} value={spirit} onChange={e => setSpirit(+e.target.value)} style={{ width: '100%' }} />
+          </div>
+          <div>
+            <label style={labelStyle}>Fiducia (1–20): <strong>{confidence}</strong></label>
+            <input type="range" min={1} max={20} value={confidence} onChange={e => setConfidence(+e.target.value)} style={{ width: '100%' }} />
+          </div>
+        </div>
+      </div>
+
+      <div style={sectionStyle}>
+        <h3 style={{ margin: '0 0 16px', fontSize: 16 }}>Esperienza per modulo</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+          {FORMATIONS.map(f => {
+            const xp = formationXP[f] ?? 0
+            return (
+              <div key={f}>
+                <label style={labelStyle}>{f} — {XP_LABELS[xp] ?? xp}</label>
+                <input type="range" min={0} max={20} value={xp}
+                  onChange={e => setFormationXP(prev => ({ ...prev, [f]: +e.target.value }))}
+                  style={{ width: '100%' }} />
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {squadQ.data && (
+        <div style={sectionStyle}>
+          <h3 style={{ margin: '0 0 12px', fontSize: 16 }}>
+            Giocatori disponibili ({squadQ.data.players.filter(p => p.injury_days <= 0).length} sani)
+          </h3>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                  {['Nome','Forma','Stamina','Ruolo','Rating'].map(h => (
+                    <th key={h} style={{ textAlign: 'left', padding: '6px 8px', color: '#6b7280' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {squadQ.data.players.map(p => (
+                  <tr key={p.id} style={{ borderBottom: '1px solid #f3f4f6', opacity: p.injury_days > 0 ? 0.4 : 1 }}>
+                    <td style={{ padding: '6px 8px', fontWeight: 500 }}>{p.name}{p.injury_days > 0 ? ' 🤕' : ''}</td>
+                    <td style={{ padding: '6px 8px' }}>{p.form}</td>
+                    <td style={{ padding: '6px 8px' }}>{p.stamina}</td>
+                    <td style={{ padding: '6px 8px' }}>{p.best_role}</td>
+                    <td style={{ padding: '6px 8px' }}>{p.role_rating}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <button style={btnPrimary} onClick={() => setStep(2)}>Avanti: Avversario →</button>
       </div>
     </div>
   )
-}
 
-function TacticBadge({ label, value }: { label: string; value: string }) {
-  return (
-    <span style={{
-      fontSize: 10, padding: '3px 8px', borderRadius: 12,
-      background: '#eff6ff', color: '#1d4ed8',
-    }}>
-      {label}: <strong>{value}</strong>
-    </span>
+  if (step === 2) return (
+    <div style={{ maxWidth: 700, margin: '0 auto' }}>
+      <StepHeader />
+      <div style={sectionStyle}>
+        <h3 style={{ margin: '0 0 16px', fontSize: 16 }}>Tipo partita</h3>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {(['league','cup','friendly'] as const).map(t => (
+            <button key={t} onClick={() => setMatchType(t)}
+              style={{ ...btnSecondary, background: matchType === t ? '#eff6ff' : undefined,
+                borderColor: matchType === t ? '#3b82f6' : undefined,
+                color: matchType === t ? '#3b82f6' : undefined }}>
+              {t === 'league' ? 'Campionato' : t === 'cup' ? 'Coppa' : 'Amichevole'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={sectionStyle}>
+        <label style={{ ...labelStyle, marginBottom: 8, fontWeight: 600, color: '#111' }}>
+          XML Rosa avversaria * (obbligatorio)
+        </label>
+        <textarea value={playersXml} onChange={e => setPlayersXml(e.target.value)}
+          placeholder="Incolla qui l'XML CHPP della rosa avversaria..."
+          style={{ ...inputStyle, height: 160, resize: 'vertical', fontFamily: 'monospace', fontSize: 12 }} />
+      </div>
+
+      <div style={sectionStyle}>
+        <label style={{ ...labelStyle, marginBottom: 8, fontWeight: 600, color: '#111' }}>
+          XML Partite recenti (opzionale)
+        </label>
+        <textarea value={matchesXml} onChange={e => setMatchesXml(e.target.value)}
+          placeholder="Incolla qui l'XML CHPP delle partite recenti..."
+          style={{ ...inputStyle, height: 100, resize: 'vertical', fontFamily: 'monospace', fontSize: 12 }} />
+      </div>
+
+      {analyzeMut.isError && (
+        <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 6, padding: 12, marginBottom: 16, color: '#dc2626', fontSize: 13 }}>
+          {String((analyzeMut.error as Error)?.message ?? 'Errore di analisi')}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <button style={btnSecondary} onClick={() => setStep(1)}>← Indietro</button>
+        <button
+          style={{ ...btnPrimary, opacity: !playersXml.trim() || analyzeMut.isPending ? 0.6 : 1 }}
+          disabled={!playersXml.trim() || analyzeMut.isPending}
+          onClick={() => analyzeMut.mutate()}>
+          {analyzeMut.isPending ? 'Analisi in corso...' : 'Analizza partita →'}
+        </button>
+      </div>
+    </div>
   )
-}
 
-export function PrePartita() {
-  const [playersXml, setPlayersXml] = useState('')
-  const [matchesXml, setMatchesXml] = useState('')
-  const [result, setResult] = useState<AnalysisResult | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  if (!analysis) return null
 
-  const { data: squadData } = useQuery({
-    queryKey: ['pre-partita-squad'],
-    queryFn: getPrePartitaSquad,
-  })
+  const { my_team, opponent, tactic_ranking, attitude, explanation } = analysis
 
-  async function handleAnalyze() {
-    if (!playersXml.trim()) return
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await analyzeOpponent(playersXml, matchesXml)
-      setResult(res)
-    } catch (e) {
-      setError((e as Error).message)
-    } finally {
-      setLoading(false)
-    }
+  const ATTITUDE_LABELS: Record<string, string> = {
+    normal: 'Normale', mots: 'Partita della Stagione', cool: 'Partitella'
   }
 
-  const myByLine = result
-    ? (['goalkeeper', 'defense', 'midfield', 'attack'] as const).reduce(
-        (acc, line) => {
-          const entries = result.my_team.lineup[line] ?? []
-          if (entries.length) acc[line] = entries.map(e => e.name).join(', ')
-          return acc
-        },
-        {} as Record<string, string>,
-      )
-    : {}
-
-  const squadByRole = (squadData?.players ?? []).reduce(
-    (acc: Record<string, SquadPlayer[]>, p) => {
-      const role = p.injury_days >= 0 ? 'Infortunati' : p.best_role
-      if (!acc[role]) acc[role] = []
-      acc[role].push(p)
-      return acc
-    },
-    {},
+  const ratingBar = (val: number, max = 20) => (
+    <div style={{ background: '#e5e7eb', borderRadius: 4, height: 8, width: '100%' }}>
+      <div style={{ background: '#3b82f6', borderRadius: 4, height: 8, width: `${Math.min((val/max)*100, 100)}%` }} />
+    </div>
   )
 
   return (
-    <div>
-      <h1 style={{ margin: '0 0 20px' }}>Pre-Partita</h1>
+    <div style={{ maxWidth: 800, margin: '0 auto' }}>
+      <StepHeader />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
+      <div style={{ ...sectionStyle, borderLeft: '4px solid #3b82f6' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+          <span style={{ fontSize: 28, fontWeight: 700, color: '#1d4ed8' }}>{my_team.best_formation}</span>
+          <span style={{ fontSize: 13, background: my_team.xp_warning ? '#fef3c7' : '#d1fae5',
+            color: my_team.xp_warning ? '#b45309' : '#065f46', borderRadius: 12, padding: '2px 10px' }}>
+            XP {my_team.xp_level} {XP_LABELS[my_team.xp_level] ?? ''}
+          </span>
+          {my_team.xp_warning && my_team.xp_alternative && (
+            <span style={{ fontSize: 12, color: '#b45309' }}>
+              ⚠ Rischio confusione — alternativa: {my_team.xp_alternative}
+            </span>
+          )}
+        </div>
+        <p style={{ margin: 0, fontSize: 14, color: '#374151' }}>{explanation}</p>
+      </div>
 
-        {/* LEFT */}
-        <div>
-          {/* Opponent input */}
-          <div style={card}>
-            <div style={{ fontWeight: 600, marginBottom: 10 }}>⚔️ Dati avversario</div>
-
-            <div style={{ marginBottom: 8 }}>
-              <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>players.xml</div>
-              <textarea
-                value={playersXml}
-                onChange={e => setPlayersXml(e.target.value)}
-                placeholder="Incolla qui il players.xml dell'avversario..."
-                rows={5}
-                style={{ width: '100%', fontFamily: 'monospace', fontSize: 11, border: '1px solid #e5e7eb', borderRadius: 4, padding: 8, resize: 'vertical', boxSizing: 'border-box' }}
-              />
-            </div>
-
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>matches.xml (opzionale)</div>
-              <textarea
-                value={matchesXml}
-                onChange={e => setMatchesXml(e.target.value)}
-                placeholder="Incolla qui il matches.xml dell'avversario (opzionale)..."
-                rows={5}
-                style={{ width: '100%', fontFamily: 'monospace', fontSize: 11, border: '1px solid #e5e7eb', borderRadius: 4, padding: 8, resize: 'vertical', boxSizing: 'border-box' }}
-              />
-            </div>
-
-            <button
-              onClick={handleAnalyze}
-              disabled={loading || !playersXml.trim()}
-              style={{
-                width: '100%', padding: '8px 0', background: loading ? '#93c5fd' : '#3b82f6',
-                color: '#fff', border: 'none', borderRadius: 6, cursor: loading ? 'not-allowed' : 'pointer',
-                fontWeight: 600, fontSize: 14,
-              }}
-            >
-              {loading ? 'Analisi in corso…' : 'Analizza avversario'}
-            </button>
-
-            {error && <p style={{ color: '#ef4444', fontSize: 12, marginTop: 8 }}>{error}</p>}
-          </div>
-
-          {/* Opponent card */}
-          {result && (
-            <div style={card}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <strong>{result.opponent.team_name}</strong>
-                <span style={{ fontSize: 11, color: '#6b7280' }}>
-                  Formazione ottimale: <strong>{result.opponent.best_formation}</strong>
+      <div style={sectionStyle}>
+        <h3 style={{ margin: '0 0 16px', fontSize: 16 }}>Rating per reparto</h3>
+        {(['goalkeeper','defense','midfield','attack'] as const).map(line => {
+          const myVal = my_team.modified_ratings[line] ?? 0
+          const oppVal = opponent.line_ratings[line] ?? 0
+          const labels: Record<string, string> = { goalkeeper: 'Portiere', defense: 'Difesa', midfield: 'Centrocampo', attack: 'Attacco' }
+          return (
+            <div key={line} style={{ marginBottom: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
+                <span style={{ color: '#374151' }}>{labels[line]}</span>
+                <span>
+                  <span style={{ color: myVal >= oppVal ? '#059669' : '#dc2626', fontWeight: 600 }}>{myVal.toFixed(1)}</span>
+                  <span style={{ color: '#9ca3af', margin: '0 6px' }}>vs</span>
+                  <span style={{ color: '#6b7280' }}>{oppVal.toFixed(1)}</span>
                 </span>
               </div>
-
-              {(['goalkeeper', 'defense', 'midfield', 'attack'] as const).map(line => {
-                const rating = result.opponent.line_ratings[line]
-                const pct = (rating / 20) * 100
-                return (
-                  <div key={line} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <span style={{ width: 90, fontSize: 11, color: '#6b7280' }}>{LINE_LABELS[line]}</span>
-                    <div style={{ flex: 1, height: 8, background: '#e5e7eb', borderRadius: 4 }}>
-                      <div style={{ width: `${pct}%`, height: '100%', background: '#ef4444', borderRadius: 4 }} />
-                    </div>
-                    <span style={{ width: 28, fontSize: 11, textAlign: 'right', color: '#374151' }}>{rating.toFixed(1)}</span>
-                  </div>
-                )
-              })}
-
-              {result.opponent.recent_results.length > 0 && (
-                <div style={{ marginTop: 8 }}>
-                  <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4 }}>Forma recente:</div>
-                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                    {result.opponent.recent_results.map((r, i) => (
-                      <span key={i} style={{ ...RESULT_STYLE[r.result], fontSize: 10, padding: '2px 6px', borderRadius: 4 }}>
-                        {r.result} {r.goals_for}-{r.goals_against}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                {ratingBar(myVal)}
+                {ratingBar(oppVal)}
+              </div>
             </div>
-          )}
+          )
+        })}
+      </div>
 
-          {/* My squad */}
-          {squadData && squadData.players.length > 0 && (
-            <div style={card}>
-              <div style={{ fontWeight: 600, marginBottom: 8 }}>👥 Mia rosa</div>
-              {Object.entries(squadByRole).map(([role, players]) => (
-                <div key={role} style={{ marginBottom: 6 }}>
-                  <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 2 }}>{role}</div>
-                  {players.map(p => (
-                    <div key={p.id} style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      fontSize: 11, padding: '2px 6px', borderRadius: 3,
-                      background: p.injury_days >= 0 ? '#fef2f2' : '#eff6ff',
-                      marginBottom: 2, opacity: p.injury_days >= 0 ? 0.5 : 1,
-                    }}>
-                      <span>{p.name} {p.injury_days >= 0 ? '🤕' : ''}</span>
-                      <span style={{ color: '#6b7280' }}>Form {p.form} · Stam {p.stamina}</span>
-                    </div>
-                  ))}
-                </div>
-              ))}
+      <div style={sectionStyle}>
+        <h3 style={{ margin: '0 0 16px', fontSize: 16 }}>Ranking tattiche</h3>
+        {tactic_ranking.map((t, i) => (
+          <div key={t.name} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10,
+            padding: '10px 12px', borderRadius: 6,
+            background: i === 0 ? '#eff6ff' : '#f9fafb',
+            border: i === 0 ? '1px solid #bfdbfe' : '1px solid #e5e7eb' }}>
+            <span style={{ fontSize: 18, fontWeight: 700, color: i === 0 ? '#1d4ed8' : '#9ca3af', width: 24 }}>{i+1}</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: i === 0 ? 700 : 500, fontSize: 14, color: '#111' }}>{t.name}</div>
+              <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{t.explanation}</div>
             </div>
-          )}
-        </div>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>{t.score.toFixed(1)}</span>
+          </div>
+        ))}
+      </div>
 
-        {/* RIGHT: Piano di gara */}
-        <div style={{ ...card, border: result ? '2px solid #3b82f6' : '1px solid #e5e7eb' }}>
-          {!result ? (
-            <div style={{ textAlign: 'center', padding: '40px 0', color: '#9ca3af' }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>🎯</div>
-              <div>Incolla i dati dell'avversario e clicca "Analizza"</div>
-            </div>
-          ) : (
-            <>
-              <div style={{ color: '#1d4ed8', fontWeight: 700, marginBottom: 12 }}>🎯 Piano di Gara</div>
+      <div style={{ ...sectionStyle, borderLeft: `4px solid ${attitude.attitude === 'mots' ? '#f59e0b' : attitude.attitude === 'cool' ? '#6b7280' : '#10b981'}` }}>
+        <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Atteggiamento consigliato</div>
+        <div style={{ fontSize: 20, fontWeight: 700 }}>{ATTITUDE_LABELS[attitude.attitude]}</div>
+        <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>{attitude.reason}</div>
+      </div>
 
-              {/* Formazione */}
-              <div style={{ background: '#eff6ff', borderRadius: 6, padding: 10, marginBottom: 12 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#1d4ed8', marginBottom: 6 }}>
-                  Formazione: {result.my_team.best_formation}
-                </div>
-                {(['goalkeeper', 'defense', 'midfield', 'attack'] as const).map(line =>
-                  myByLine[line] ? (
-                    <div key={line} style={{ fontSize: 11, color: '#1e40af', marginBottom: 2, textAlign: 'center' }}>
-                      {myByLine[line]}
-                    </div>
-                  ) : null,
-                )}
-              </div>
-
-              {/* Confronto reparti */}
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Confronto reparti</div>
-                <LineBars myRatings={result.my_team.line_ratings} oppRatings={result.opponent.line_ratings} />
-              </div>
-
-              {/* Tattica */}
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Impostazioni tattiche</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  <TacticBadge label="Pressing" value={result.tactics.pressing ? 'Sì' : 'No'} />
-                  <TacticBadge label="Attacco" value={result.tactics.attack_direction === 'center' ? 'Centro' : 'Fasce'} />
-                  {result.tactics.set_pieces_taker && (
-                    <TacticBadge
-                      label="CP"
-                      value={`${result.tactics.set_pieces_taker.name} (SP ${result.tactics.set_pieces_taker.set_pieces})`}
-                    />
-                  )}
-                  <TacticBadge label="Att." value={result.tactics.attitude === 'normal' ? 'Normale' : 'Difensivo'} />
-                </div>
-              </div>
-
-              {/* Spiegazione */}
-              <div style={{ background: '#f8fafc', borderLeft: '3px solid #3b82f6', padding: 10, borderRadius: '0 6px 6px 0' }}>
-                <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4 }}>💡 Analisi</div>
-                <div style={{ fontSize: 11, color: '#4b5563', lineHeight: 1.6 }}>{result.explanation}</div>
-              </div>
-            </>
-          )}
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <button style={btnSecondary} onClick={() => { setStep(1); setAnalysis(null) }}>← Nuova analisi</button>
+        <button style={{ ...btnPrimary, opacity: saved ? 0.6 : 1 }}
+          disabled={saved || saveMut.isPending}
+          onClick={() => saveMut.mutate()}>
+          {saved ? '✓ Analisi salvata' : 'Salva analisi'}
+        </button>
       </div>
     </div>
   )
