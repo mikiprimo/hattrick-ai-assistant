@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from lxml import etree
 
+_PARSER = etree.XMLParser(resolve_entities=False, no_network=True, load_dtd=False, huge_tree=False)
+
 
 @dataclass
 class OpponentPlayer:
@@ -34,7 +36,7 @@ def _int_text(el, tag: str, default: int = 0) -> int:
 
 
 def parse_opponent_players(xml_str: str) -> tuple[int, str, list[OpponentPlayer]]:
-    root = etree.fromstring(xml_str.encode())
+    root = etree.fromstring(xml_str.encode(), _PARSER)
     team = root.find(".//Team")
     team_id = int(team.findtext("TeamID", "0"))
     team_name = team.findtext("TeamName", "")
@@ -62,7 +64,7 @@ def parse_opponent_players(xml_str: str) -> tuple[int, str, list[OpponentPlayer]
 
 
 def parse_opponent_matches(xml_str: str, team_id: int) -> list[MatchResult]:
-    root = etree.fromstring(xml_str.encode())
+    root = etree.fromstring(xml_str.encode(), _PARSER)
     results = []
     for match in root.findall(".//MatchList/Match"):
         if match.findtext("MatchType") != "1":
