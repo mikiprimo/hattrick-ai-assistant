@@ -5,8 +5,6 @@ from app.database import Base
 
 def test_run_migrations_adds_hrf_columns():
     from app.models.player import Player  # noqa: F401
-    from app.models.sync_log import SyncLog  # noqa: F401
-    from app.models.settings import CHPPSettings  # noqa: F401
     from app.models.player_skill_history import PlayerSkillHistory  # noqa: F401
     from app.models.hrf_settings import HRFSettings  # noqa: F401
     from app.migrations import run_migrations

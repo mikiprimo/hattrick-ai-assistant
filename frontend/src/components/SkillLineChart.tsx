@@ -35,7 +35,7 @@ interface Props {
 export function SkillLineChart({ history, skills }: Props) {
   const data = history.map((s) => ({
     date: s.snapshot_date.slice(0, 10),
-    ...Object.fromEntries(skills.map((sk) => [sk, (s as Record<string, unknown>)[sk]])),
+    ...Object.fromEntries(skills.map((sk) => [sk, (s as unknown as Record<string, unknown>)[sk]])),
   }))
 
   return (

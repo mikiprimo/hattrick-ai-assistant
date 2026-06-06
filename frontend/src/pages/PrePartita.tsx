@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import {
   getPrePartitaSquad, getFormationXP, analyzeOpponent, saveAnalysis,
@@ -25,11 +25,11 @@ export function PrePartita() {
   const [saved, setSaved] = useState(false)
 
   const squadQ = useQuery({ queryKey: ['pre-partita-squad'], queryFn: getPrePartitaSquad })
-  useQuery({
-    queryKey: ['formation-xp'],
-    queryFn: getFormationXP,
-    onSuccess: (data: { formation_xp: Record<string, number> }) => setFormationXP(data.formation_xp),
-  })
+  const formationXPQ = useQuery({ queryKey: ['formation-xp'], queryFn: getFormationXP })
+
+  useEffect(() => {
+    if (formationXPQ.data) setFormationXP(formationXPQ.data.formation_xp)
+  }, [formationXPQ.data])
 
   const analyzeMut = useMutation({
     mutationFn: () => analyzeOpponent({

@@ -15,7 +15,7 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 @pytest.fixture
 def client_with_hrf_db(tmp_path):
-    from app.models import player, settings, sync_log  # noqa
+    from app.models import player  # noqa
     from app.models.player_skill_history import PlayerSkillHistory  # noqa
     from app.models.hrf_settings import HRFSettings  # noqa
     from app.models.match_snapshot import MatchSnapshot  # noqa

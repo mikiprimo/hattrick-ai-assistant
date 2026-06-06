@@ -89,7 +89,7 @@ export function PlayerDetail() {
                     {SKILL_LABELS[sk] ?? sk}
                   </td>
                   <td style={{ padding: '3px 0', fontWeight: 500 }}>
-                    {(player as Record<string, unknown>)[sk] as number ?? '—'}
+                    {(player as unknown as Record<string, unknown>)[sk] as number ?? '—'}
                   </td>
                 </tr>
               ))}
