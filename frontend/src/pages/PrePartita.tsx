@@ -212,6 +212,49 @@ export function PrePartita() {
     normal: 'Normale', mots: 'Partita della Stagione', cool: 'Partitella'
   }
 
+  const LINE_LABEL: Record<string, string> = {
+    goalkeeper: 'Portiere', defense: 'Difesa', midfield: 'Centrocampo', attack: 'Attacco'
+  }
+
+  // Collect starting XI ids from lineup
+  const startingIds = new Set(
+    Object.values(my_team.lineup).flatMap(arr => arr.map(p => p.id))
+  )
+
+  // Bench: available non-injured players not in starting XI
+  const allPlayers = squadQ.data?.players ?? []
+  const bench = allPlayers
+    .filter(p => p.injury_days <= 0 && !startingIds.has(p.id))
+    .sort((a, b) => b.role_rating - a.role_rating)
+
+  // Substitution plan: starters with lowest stamina → best bench replacement by role
+  const lineOrder = ['goalkeeper', 'defense', 'midfield', 'attack'] as const
+  const starters = lineOrder.flatMap(line =>
+    (my_team.lineup[line] ?? []).map(p => {
+      const full = allPlayers.find(ap => ap.id === p.id)
+      return { ...p, stamina: full?.stamina ?? 10, line }
+    })
+  )
+  const subTargets = [...starters]
+    .filter(p => p.line !== 'goalkeeper')
+    .sort((a, b) => a.stamina - b.stamina)
+    .slice(0, 3)
+
+  const LINE_ROLES: Record<string, string[]> = {
+    defense: ['CD', 'WB', 'W'],
+    midfield: ['IM', 'W', 'WB'],
+    attack: ['FW', 'IM'],
+  }
+  const usedBenchIds = new Set<number>()
+  const subPlan = subTargets.map((out, i) => {
+    const preferred = (LINE_ROLES[out.line] ?? [])
+    const inPlayer = bench.find(b => !usedBenchIds.has(b.id) && preferred.includes(b.best_role))
+      ?? bench.find(b => !usedBenchIds.has(b.id))
+      ?? null
+    if (inPlayer) usedBenchIds.add(inPlayer.id)
+    return { out, inPlayer, minute: 60 + i * 10 }
+  })
+
   const ratingBar = (val: number, max = 20) => (
     <div style={{ background: '#e5e7eb', borderRadius: 4, height: 8, width: '100%' }}>
       <div style={{ background: '#3b82f6', borderRadius: 4, height: 8, width: `${Math.min((val/max)*100, 100)}%` }} />
@@ -237,6 +280,79 @@ export function PrePartita() {
         </div>
         <p style={{ margin: 0, fontSize: 14, color: '#374151' }}>{explanation}</p>
       </div>
+
+      <div style={sectionStyle}>
+        <h3 style={{ margin: '0 0 16px', fontSize: 16 }}>Formazione schierata</h3>
+        {(['goalkeeper','defense','midfield','attack'] as const).map(line => {
+          const lineLabels: Record<string, string> = { goalkeeper: 'Portiere', defense: 'Difesa', midfield: 'Centrocampo', attack: 'Attacco' }
+          const players = my_team.lineup[line] ?? []
+          if (players.length === 0) return null
+          return (
+            <div key={line} style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'flex-start' }}>
+              <span style={{ fontSize: 12, color: '#6b7280', width: 100, flexShrink: 0, paddingTop: 2 }}>{lineLabels[line]}</span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {players.map(p => (
+                  <span key={p.id} style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6,
+                    padding: '3px 10px', fontSize: 13, color: '#1d4ed8', fontWeight: 500 }}>
+                    {p.name} <span style={{ color: '#6b7280', fontWeight: 400 }}>({p.rating})</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {bench.length > 0 && (
+        <div style={sectionStyle}>
+          <h3 style={{ margin: '0 0 14px', fontSize: 16 }}>Panchina ({bench.length})</h3>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {bench.map(p => (
+              <span key={p.id} style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6,
+                padding: '3px 10px', fontSize: 13, color: '#374151' }}>
+                {p.name}
+                <span style={{ color: '#6b7280', marginLeft: 6 }}>{p.best_role} · st.{p.stamina}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {subPlan.length > 0 && (
+        <div style={sectionStyle}>
+          <h3 style={{ margin: '0 0 14px', fontSize: 16 }}>Piano sostituzioni</h3>
+          <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 10 }}>
+            Basato sullo stamina dei titolari — adatta in base all'andamento della partita.
+          </div>
+          {subPlan.map((sub, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10,
+              padding: '10px 12px', borderRadius: 6, background: '#f9fafb', border: '1px solid #e5e7eb' }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#6b7280', width: 60 }}>
+                ~{sub.minute}'
+              </span>
+              <span style={{ fontSize: 13, color: '#dc2626', textDecoration: 'line-through' }}>
+                {sub.out.name}
+              </span>
+              <span style={{ color: '#9ca3af' }}>
+                <span style={{ fontSize: 11, background: '#fee2e2', color: '#dc2626', borderRadius: 4, padding: '1px 6px' }}>
+                  st.{sub.out.stamina}
+                </span>
+              </span>
+              <span style={{ color: '#9ca3af', fontSize: 16 }}>→</span>
+              {sub.inPlayer ? (
+                <>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#059669' }}>{sub.inPlayer.name}</span>
+                  <span style={{ fontSize: 11, background: '#d1fae5', color: '#059669', borderRadius: 4, padding: '1px 6px' }}>
+                    {sub.inPlayer.best_role} · st.{sub.inPlayer.stamina}
+                  </span>
+                </>
+              ) : (
+                <span style={{ fontSize: 13, color: '#9ca3af', fontStyle: 'italic' }}>nessun sostituto disponibile</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       <div style={sectionStyle}>
         <h3 style={{ margin: '0 0 16px', fontSize: 16 }}>Rating per reparto</h3>
