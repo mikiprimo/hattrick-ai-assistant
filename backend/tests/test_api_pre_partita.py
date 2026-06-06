@@ -3,6 +3,23 @@ from app.models.player import Player
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
+PLAYERS_XML = """<?xml version="1.0" encoding="utf-8"?>
+<HattrickData>
+  <Team>
+    <TeamID>999</TeamID>
+    <TeamName>Avversario FC</TeamName>
+    <PlayerList>
+      <Player>
+        <PlayerID>1</PlayerID><FirstName>A</FirstName><LastName>B</LastName>
+        <PlayerForm>7</PlayerForm><StaminaSkill>8</StaminaSkill><InjuryLevel>-1</InjuryLevel>
+        <KeeperSkill>5</KeeperSkill><DefenderSkill>6</DefenderSkill>
+        <PlaymakerSkill>7</PlaymakerSkill><ScorerSkill>6</ScorerSkill>
+        <PassingSkill>6</PassingSkill><WingerSkill>6</WingerSkill><SetPiecesSkill>5</SetPiecesSkill>
+      </Player>
+    </PlayerList>
+  </Team>
+</HattrickData>"""
+
 
 def _add_squad(db):
     """11 giocatori sani per testare gli endpoint."""
@@ -23,6 +40,10 @@ def _add_squad(db):
         db.add(p)
     db.commit()
 
+
+# ---------------------------------------------------------------------------
+# Squad endpoint tests
+# ---------------------------------------------------------------------------
 
 def test_get_squad_empty(client):
     r = client.get("/api/pre-partita/squad")
@@ -46,6 +67,34 @@ def test_get_squad_returns_players_with_skills(client, db):
     assert "injury_days" in p
 
 
+# ---------------------------------------------------------------------------
+# Formation XP endpoints
+# ---------------------------------------------------------------------------
+
+def test_get_formation_xp_empty(client):
+    resp = client.get("/api/pre-partita/formation-xp")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "formation_xp" in data
+    assert isinstance(data["formation_xp"], dict)
+
+
+def test_put_formation_xp(client):
+    resp = client.put("/api/pre-partita/formation-xp", json={"formation_name": "4-4-2", "xp_level": 15})
+    assert resp.status_code == 200
+    resp2 = client.get("/api/pre-partita/formation-xp")
+    assert resp2.json()["formation_xp"]["4-4-2"] == 15
+
+
+def test_put_formation_xp_invalid_name(client):
+    resp = client.put("/api/pre-partita/formation-xp", json={"formation_name": "3-3-3", "xp_level": 10})
+    assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Analyze endpoint — new interface
+# ---------------------------------------------------------------------------
+
 def test_analyze_returns_complete_structure(client, db):
     _add_squad(db)
     players_xml = (FIXTURES / "players_sesto_san_juan.xml").read_text()
@@ -62,8 +111,40 @@ def test_analyze_returns_complete_structure(client, db):
     assert data["opponent"]["recent_results"] == []
     assert data["my_team"]["best_formation"] in all_formations
     assert set(data["my_team"]["lineup"]) == {"goalkeeper", "defense", "midfield", "attack"}
-    assert set(data["tactics"]) == {"pressing", "attack_direction", "set_pieces_taker", "attitude"}
+    assert "tactic_ranking" in data
+    assert "attitude" in data
     assert isinstance(data["explanation"], str) and len(data["explanation"]) > 10
+
+
+def test_analyze_with_spirit_and_confidence(client, db):
+    _add_squad(db)
+    resp = client.post("/api/pre-partita/analyze", json={
+        "players_xml": PLAYERS_XML,
+        "matches_xml": "",
+        "match_type": "league",
+        "spirit": 12,
+        "confidence": 10,
+        "formation_xp": {"4-4-2": 14},
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "tactic_ranking" in data
+    assert len(data["tactic_ranking"]) == 7
+    assert "attitude" in data
+    assert data["attitude"]["attitude"] in ("normal", "mots", "cool")
+    assert "my_team" in data
+    assert "opponent" in data
+
+
+def test_analyze_missing_players_xml(client):
+    resp = client.post("/api/pre-partita/analyze", json={
+        "players_xml": "",
+        "match_type": "league",
+        "spirit": 10,
+        "confidence": 10,
+        "formation_xp": {},
+    })
+    assert resp.status_code == 422
 
 
 def test_analyze_with_matches_xml_returns_recent_results(client, db):
@@ -102,18 +183,46 @@ def test_analyze_malformed_matches_xml_returns_422(client, db):
     assert "matches_xml" in r.json()["detail"].lower()
 
 
-def test_analyze_tactics_direction_is_valid(client, db):
+def test_analyze_tactic_ranking_has_seven_entries(client, db):
     _add_squad(db)
     players_xml = (FIXTURES / "players_sesto_san_juan.xml").read_text()
     r = client.post("/api/pre-partita/analyze", json={"players_xml": players_xml, "matches_xml": ""})
-    assert r.json()["tactics"]["attack_direction"] in ("center", "wings")
+    assert r.status_code == 200
+    assert len(r.json()["tactic_ranking"]) == 7
 
 
-def test_analyze_set_pieces_taker_present(client, db):
+def test_analyze_attitude_is_valid(client, db):
     _add_squad(db)
     players_xml = (FIXTURES / "players_sesto_san_juan.xml").read_text()
     r = client.post("/api/pre-partita/analyze", json={"players_xml": players_xml, "matches_xml": ""})
-    sp = r.json()["tactics"]["set_pieces_taker"]
-    assert sp is not None
-    assert "name" in sp
-    assert "set_pieces" in sp
+    assert r.json()["attitude"]["attitude"] in ("normal", "mots", "cool")
+
+
+# ---------------------------------------------------------------------------
+# Save and History endpoints
+# ---------------------------------------------------------------------------
+
+def test_save_and_history(client, db):
+    _add_squad(db)
+    resp = client.post("/api/pre-partita/analyze", json={
+        "players_xml": PLAYERS_XML,
+        "match_type": "league",
+        "spirit": 10,
+        "confidence": 10,
+        "formation_xp": {},
+    })
+    assert resp.status_code == 200
+    analysis = resp.json()
+
+    save_resp = client.post("/api/pre-partita/save", json={
+        "analysis": analysis,
+        "my_spirit": 10,
+        "my_confidence": 10,
+        "my_attitude": analysis["attitude"]["attitude"],
+        "match_type": "league",
+    })
+    assert save_resp.status_code == 200
+
+    hist = client.get("/api/pre-partita/history")
+    assert hist.status_code == 200
+    assert len(hist.json()["history"]) >= 1
