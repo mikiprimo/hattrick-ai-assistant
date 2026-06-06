@@ -118,6 +118,7 @@ def scan_and_import(db: Session = Depends(get_db)):
                 "league_played": md.league_played,
                 "league_goals_for": md.league_goals_for,
                 "league_goals_against": md.league_goals_against,
+                "league_series": md.league_series,
                 "lineup_json": json.dumps(md.lineup),
                 "ratings_json": json.dumps({str(k): v for k, v in md.ratings.items()}),
             }

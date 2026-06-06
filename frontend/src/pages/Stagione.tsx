@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { getSeasonalCurrent, getSeasonalHistory, saveSeasonalObjective, type SeasonalObjective } from '../api/seasonal'
+import { getLatestLeague } from '../api/matches'
 
 const STRATEGY_LABELS = { promote: 'Promozione', maintain: 'Mantenimento', youth: 'Sviluppo giovani' }
 
 export function Stagione() {
-  const currentQ  = useQuery({ queryKey: ['seasonal-current'], queryFn: getSeasonalCurrent })
-  const historyQ  = useQuery({ queryKey: ['seasonal-history'], queryFn: getSeasonalHistory })
+  const currentQ   = useQuery({ queryKey: ['seasonal-current'], queryFn: getSeasonalCurrent })
+  const historyQ   = useQuery({ queryKey: ['seasonal-history'], queryFn: getSeasonalHistory })
+  const latestHrfQ = useQuery({ queryKey: ['latest-league'], queryFn: getLatestLeague })
 
   const [season, setSeason] = useState(0)
   const [position, setPosition] = useState(5)
@@ -18,8 +20,12 @@ export function Stagione() {
   const [saved, setSaved] = useState<SeasonalObjective | null>(null)
 
   useEffect(() => {
+    if (!currentQ.isFetched || !latestHrfQ.isFetched) return
     const obj = currentQ.data?.objective
-    if (obj) {
+    const hrf = latestHrfQ.data
+
+    // Use saved objective if it exists and matches the current HRF season
+    if (obj && (!hrf || obj.season === hrf.season)) {
       setSeason(obj.season)
       setPosition(obj.league_position)
       setPoints(obj.league_points)
@@ -27,8 +33,14 @@ export function Stagione() {
       setBudget(obj.budget_manual)
       setStrategy(obj.strategy)
       setNotes(obj.notes)
+    } else if (hrf) {
+      // No saved objective, or season changed — pre-fill from latest HRF scan
+      setSeason(hrf.season)
+      setPosition(hrf.league_position)
+      setPoints(hrf.league_points)
+      setSeries(hrf.league_series)
     }
-  }, [currentQ.data])
+  }, [currentQ.isFetched, latestHrfQ.isFetched, currentQ.data, latestHrfQ.data])
 
   const saveMut = useMutation({
     mutationFn: () => saveSeasonalObjective({

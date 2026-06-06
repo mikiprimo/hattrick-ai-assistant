@@ -28,6 +28,12 @@ def run_migrations(engine) -> None:
                         raise ValueError(f"Unexpected column in migration: {col_name}")
                     conn.execute(text(f"ALTER TABLE players ADD COLUMN {col_name} {col_def}"))
 
+    if "match_snapshots" in tables:
+        existing_ms = {c["name"] for c in inspector.get_columns("match_snapshots")}
+        if "league_series" not in existing_ms:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE match_snapshots ADD COLUMN league_series TEXT DEFAULT ''"))
+
     # Drop formation_xp and match_prep if they have old incompatible schemas
     if "formation_xp" in tables:
         cols = {c["name"] for c in inspector.get_columns("formation_xp")}

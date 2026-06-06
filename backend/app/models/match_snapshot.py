@@ -16,5 +16,6 @@ class MatchSnapshot(Base):
     league_played: Mapped[int] = mapped_column(Integer, default=0)
     league_goals_for: Mapped[int] = mapped_column(Integer, default=0)
     league_goals_against: Mapped[int] = mapped_column(Integer, default=0)
+    league_series: Mapped[str] = mapped_column(String, default="")
     lineup_json: Mapped[str] = mapped_column(String, default="{}")
     ratings_json: Mapped[str] = mapped_column(String, default="{}")

@@ -30,6 +30,24 @@ _LINEUP_MAP = [
 ]
 
 
+@router.get("/matches/latest-league")
+def get_latest_league(db: Session = Depends(get_db)):
+    s = db.query(MatchSnapshot).order_by(MatchSnapshot.snapshot_date.desc()).first()
+    if not s:
+        return None
+    return {
+        "season": s.season,
+        "matchround": s.matchround,
+        "league_position": s.league_position,
+        "league_points": s.league_points,
+        "league_played": s.league_played,
+        "league_goals_for": s.league_goals_for,
+        "league_goals_against": s.league_goals_against,
+        "league_series": s.league_series,
+        "snapshot_date": s.snapshot_date.strftime("%Y-%m-%d"),
+    }
+
+
 @router.get("/matches")
 def get_matches(db: Session = Depends(get_db)):
     snapshots = (
