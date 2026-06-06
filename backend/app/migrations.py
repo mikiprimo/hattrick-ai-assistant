@@ -18,7 +18,7 @@ def run_migrations(engine) -> None:
             ("transfer_listed",   "BOOLEAN DEFAULT 0"),
             ("country_id",        "INTEGER"),
             ("homegrown",         "BOOLEAN DEFAULT 0"),
-            ("data_source",       "TEXT DEFAULT 'CHPP'"),
+            ("data_source",       "TEXT DEFAULT 'HRF'"),
         ]
         with engine.begin() as conn:
             for col_name, col_def in new_cols:
