@@ -56,10 +56,11 @@ def test_analyze_returns_complete_structure(client, db):
     assert r.status_code == 200
     data = r.json()
     assert data["opponent"]["team_name"] == "Sesto San Juan"
-    assert data["opponent"]["best_formation"] in {"4-4-2", "4-5-1", "4-3-3", "3-5-2", "5-3-2"}
+    all_formations = {"4-4-2","3-5-2","4-3-3","3-4-3","5-4-1","4-5-1","5-3-2","5-2-3","5-5-0","2-5-3"}
+    assert data["opponent"]["best_formation"] in all_formations
     assert set(data["opponent"]["line_ratings"]) == {"goalkeeper", "defense", "midfield", "attack"}
     assert data["opponent"]["recent_results"] == []
-    assert data["my_team"]["best_formation"] in {"4-4-2", "4-5-1", "4-3-3", "3-5-2", "5-3-2"}
+    assert data["my_team"]["best_formation"] in all_formations
     assert set(data["my_team"]["lineup"]) == {"goalkeeper", "defense", "midfield", "attack"}
     assert set(data["tactics"]) == {"pressing", "attack_direction", "set_pieces_taker", "attitude"}
     assert isinstance(data["explanation"], str) and len(data["explanation"]) > 10

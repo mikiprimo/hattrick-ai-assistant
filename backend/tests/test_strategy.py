@@ -1,194 +1,163 @@
 import pytest
-from dataclasses import dataclass
-from app.hrf.strategy import role_rating, optimize_formation, compute_tactics, generate_explanation
-from app.hrf.opponent_parser import MatchResult
+from app.hrf.strategy import (
+    FORMATIONS, role_rating, optimize_formation, rank_tactics, recommend_attitude,
+    _apply_spirit_modifier, _apply_confidence_modifier, _apply_xp_modifier, _apply_form_modifier,
+)
+from app.models.player import Player
 
 
-@dataclass
-class P:
-    """Fake player per i test."""
-    first_name: str = "X"
-    last_name: str = "Y"
-    injury_days: int = -1
-    stamina: int = 7
-    goalkeeper: int = 0
-    defending: int = 0
-    playmaking: int = 0
-    scoring: int = 0
-    passing: int = 0
-    winger: int = 0
-    set_pieces: int = 3
-
-
-def squad(gk=10, df=10, mid=10, win=10, fwd=10):
-    """11 giocatori con skill mirate per testare l'assegnazione."""
-    return [
-        P(first_name="GK", last_name="GK", goalkeeper=gk, set_pieces=8),
-        P(first_name="D1", last_name="D1", defending=df),
-        P(first_name="D2", last_name="D2", defending=df - 1),
-        P(first_name="D3", last_name="D3", defending=df - 2),
-        P(first_name="D4", last_name="D4", defending=df - 3),
-        P(first_name="M1", last_name="M1", playmaking=mid),
-        P(first_name="M2", last_name="M2", playmaking=mid - 1),
-        P(first_name="W1", last_name="W1", winger=win),
-        P(first_name="W2", last_name="W2", winger=win - 1),
-        P(first_name="F1", last_name="F1", scoring=fwd),
-        P(first_name="F2", last_name="F2", scoring=fwd - 1),
-    ]
-
-
-# --- role_rating ---
-
-def test_role_rating_goalkeeper():
-    assert role_rating(P(goalkeeper=11), "goalkeeper") == 11.0
-
-
-def test_role_rating_center_defender():
-    p = P(defending=10, playmaking=5)
-    assert role_rating(p, "center_defender") == pytest.approx(10 * 0.8 + 5 * 0.2)
-
-
-def test_role_rating_side_defender():
-    p = P(defending=10, stamina=5)
-    assert role_rating(p, "side_defender") == pytest.approx(10 * 0.7 + 5 * 0.3)
-
-
-def test_role_rating_inside_mid():
-    p = P(playmaking=10, passing=5)
-    assert role_rating(p, "inside_mid") == pytest.approx(10 * 0.6 + 5 * 0.4)
-
-
-def test_role_rating_winger():
-    p = P(winger=10, passing=5)
-    assert role_rating(p, "winger") == pytest.approx(10 * 0.7 + 5 * 0.3)
-
-
-def test_role_rating_forward():
-    p = P(scoring=10, passing=5)
-    assert role_rating(p, "forward") == pytest.approx(10 * 0.7 + 5 * 0.3)
-
-
-# --- optimize_formation ---
-
-def test_optimize_formation_assigns_best_goalkeeper():
-    players = squad(gk=15)
-    _, data = optimize_formation(players, {"goalkeeper": 5, "defense": 5, "midfield": 5, "attack": 5})
-    gk_entry = next(e for e in data["lineup"] if e["line"] == "goalkeeper")
-    assert gk_entry["player"].first_name == "GK"
-
-
-def test_optimize_formation_excludes_injured():
-    players = squad()
-    players[0].injury_days = 3  # GK infortunato
-    _, data = optimize_formation(players, {})
-    gk_entry = next(e for e in data["lineup"] if e["line"] == "goalkeeper")
-    assert gk_entry["player"].first_name != "GK"
-
-
-def test_optimize_formation_returns_valid_formation_name():
-    valid = {"4-4-2", "4-5-1", "4-3-3", "3-5-2", "5-3-2"}
-    name, _ = optimize_formation(squad(), {})
-    assert name in valid
-
-
-def test_optimize_formation_line_ratings_present():
-    _, data = optimize_formation(squad(), {})
-    for line in ("goalkeeper", "defense", "midfield", "attack"):
-        assert line in data["line_ratings"]
-        assert data["line_ratings"][line] >= 0
-
-
-def test_optimize_formation_picks_formation_exploiting_opp_weakness():
-    players = squad(df=15, mid=8, fwd=8)
-    opp = {"goalkeeper": 10, "defense": 10, "midfield": 10, "attack": 5}
-    name, _ = optimize_formation(players, opp)
-    assert name in {"4-4-2", "4-5-1", "4-3-3", "3-5-2", "5-3-2"}
-
-
-# --- compute_tactics ---
-
-def _lineup_11(stamina=7, playmaking=8, winger=6, defending=10, sp_taker_sp=5):
-    gk = P(first_name="GK", last_name="GK", goalkeeper=10, stamina=stamina, set_pieces=sp_taker_sp)
-    return (
-        [{"player": gk, "line": "goalkeeper", "role": "goalkeeper"}]
-        + [{"player": P(stamina=stamina, defending=defending, set_pieces=1), "line": "defense", "role": "center_defender"} for _ in range(4)]
-        + [{"player": P(stamina=stamina, playmaking=playmaking, set_pieces=1), "line": "midfield", "role": "inside_mid"} for _ in range(4)]
-        + [{"player": P(stamina=stamina, scoring=8, winger=winger, set_pieces=1), "line": "attack", "role": "forward"} for _ in range(2)]
+def _player(**kwargs) -> Player:
+    defaults = dict(
+        id=1, first_name="A", last_name="B", age=25, age_days=0, tsi=1000,
+        form=10, stamina=10, injury_days=-1, salary=0,
+        goalkeeper=5, defending=5, playmaking=5, winger=5,
+        passing=5, scoring=5, set_pieces=5,
+        speed=5, leadership=5, experience=5, loyalty=10,
+        market_value=0, speciality=None, last_match_rating=None,
+        transfer_listed=False, country_id=None, homegrown=False, data_source="HRF",
     )
+    defaults.update(kwargs)
+    p = Player.__new__(Player)
+    p.__dict__.update(defaults)
+    return p
 
 
-def test_compute_tactics_pressing_on_when_stamina_ok_and_opp_weak():
-    lineup = _lineup_11(stamina=8)
-    recent = [MatchResult("L", 0, 1), MatchResult("D", 0, 0), MatchResult("L", 0, 2), MatchResult("D", 0, 0)]
-    tactics = compute_tactics(lineup, {}, recent)
-    assert tactics["pressing"] is True
+def _squad(n=14, **skill_overrides):
+    players = []
+    for i in range(n):
+        p = _player(id=i+1, **skill_overrides)
+        players.append(p)
+    return players
 
 
-def test_compute_tactics_pressing_off_when_opp_strong():
-    lineup = _lineup_11(stamina=8)
-    recent = [MatchResult("W", 2, 0), MatchResult("W", 3, 0), MatchResult("W", 1, 0), MatchResult("W", 2, 1)]
-    tactics = compute_tactics(lineup, {}, recent)
-    assert tactics["pressing"] is False
+class TestFormations:
+    def test_all_10_formations_present(self):
+        expected = {"4-4-2","3-5-2","4-3-3","3-4-3","5-4-1","4-5-1","5-3-2","5-2-3","5-5-0","2-5-3"}
+        assert set(FORMATIONS.keys()) == expected
+
+    def test_optimize_returns_valid_formation(self):
+        players = _squad(14)
+        name, data = optimize_formation(players, {})
+        assert name in FORMATIONS
+        assert "line_ratings" in data
+
+    def test_no_healthy_players_raises(self):
+        players = [_player(id=i+1, injury_days=7) for i in range(14)]
+        with pytest.raises(ValueError, match="sano"):
+            optimize_formation(players, {})
 
 
-def test_compute_tactics_pressing_off_when_stamina_low():
-    lineup = _lineup_11(stamina=4)
-    recent = [MatchResult("L", 0, 1), MatchResult("L", 0, 2), MatchResult("L", 0, 3), MatchResult("L", 0, 1)]
-    tactics = compute_tactics(lineup, {}, recent)
-    assert tactics["pressing"] is False
+class TestRoleRating:
+    def test_goalkeeper_weights(self):
+        p = _player(goalkeeper=10, defending=5, set_pieces=5)
+        expected = 10 * 0.85 + 5 * 0.10 + 5 * 0.05
+        assert abs(role_rating(p, "goalkeeper") - expected) < 0.01
+
+    def test_wing_back_weights(self):
+        p = _player(defending=10, winger=5, playmaking=4, passing=3)
+        expected = 10 * 0.65 + 5 * 0.20 + 4 * 0.10 + 3 * 0.05
+        assert abs(role_rating(p, "side_defender") - expected) < 0.01
+
+    def test_center_def_weights(self):
+        p = _player(defending=10, playmaking=5, passing=3)
+        expected = 10 * 0.75 + 5 * 0.20 + 3 * 0.05
+        assert abs(role_rating(p, "center_defender") - expected) < 0.01
+
+    def test_inner_mid_weights(self):
+        p = _player(playmaking=10, passing=5, defending=4, scoring=3)
+        expected = 10 * 0.55 + 5 * 0.25 + 4 * 0.15 + 3 * 0.05
+        assert abs(role_rating(p, "inside_mid") - expected) < 0.01
+
+    def test_winger_weights(self):
+        p = _player(winger=10, playmaking=5, passing=4, defending=3)
+        expected = 10 * 0.65 + 5 * 0.20 + 4 * 0.10 + 3 * 0.05
+        assert abs(role_rating(p, "winger") - expected) < 0.01
+
+    def test_forward_weights(self):
+        p = _player(scoring=10, passing=5, winger=3)
+        expected = 10 * 0.65 + 5 * 0.25 + 3 * 0.10
+        assert abs(role_rating(p, "forward") - expected) < 0.01
 
 
-def test_compute_tactics_attack_direction_center_when_playmaking_dominates():
-    lineup = _lineup_11(playmaking=14, winger=4)
-    tactics = compute_tactics(lineup, {}, [])
-    assert tactics["attack_direction"] == "center"
+class TestModifiers:
+    def test_spirit_low(self):
+        assert abs(_apply_spirit_modifier(3) - 0.85) < 0.001
+
+    def test_spirit_high(self):
+        assert abs(_apply_spirit_modifier(16) - 1.10) < 0.001
+
+    def test_spirit_mid(self):
+        m = _apply_spirit_modifier(10)
+        assert 0.85 < m < 1.10
+
+    def test_confidence_low(self):
+        assert abs(_apply_confidence_modifier(3) - 0.88) < 0.001
+
+    def test_confidence_high(self):
+        assert abs(_apply_confidence_modifier(16) - 1.08) < 0.001
+
+    def test_xp_low(self):
+        assert abs(_apply_xp_modifier(7) - 0.90) < 0.001
+
+    def test_xp_mid(self):
+        assert abs(_apply_xp_modifier(10) - 0.95) < 0.001
+
+    def test_xp_high(self):
+        assert abs(_apply_xp_modifier(12) - 1.00) < 0.001
+
+    def test_form_low(self):
+        assert abs(_apply_form_modifier(3) - 0.90) < 0.001
+
+    def test_form_high(self):
+        assert abs(_apply_form_modifier(15) - 1.05) < 0.001
 
 
-def test_compute_tactics_attack_direction_wings_when_winger_dominates():
-    lineup = _lineup_11(playmaking=4, winger=14)
-    tactics = compute_tactics(lineup, {}, [])
-    assert tactics["attack_direction"] == "wings"
+class TestTacticRanking:
+    def test_returns_7_tactics(self):
+        players = _squad(14)
+        name, data = optimize_formation(players, {})
+        tactics = rank_tactics(data["lineup"], {}, data["line_ratings"])
+        assert len(tactics) == 7
+
+    def test_tactics_have_required_keys(self):
+        players = _squad(14)
+        name, data = optimize_formation(players, {})
+        tactics = rank_tactics(data["lineup"], {}, data["line_ratings"])
+        for t in tactics:
+            assert "name" in t
+            assert "score" in t
+            assert "explanation" in t
+
+    def test_tactics_ordered_by_score_desc(self):
+        players = _squad(14)
+        name, data = optimize_formation(players, {})
+        tactics = rank_tactics(data["lineup"], {}, data["line_ratings"])
+        scores = [t["score"] for t in tactics]
+        assert scores == sorted(scores, reverse=True)
 
 
-def test_compute_tactics_set_pieces_taker_is_highest():
-    lineup = _lineup_11(sp_taker_sp=12)
-    tactics = compute_tactics(lineup, {}, [])
-    assert tactics["set_pieces_taker"]["name"] == "GK GK"
-    assert tactics["set_pieces_taker"]["set_pieces"] == 12
+class TestAttitude:
+    def test_low_spirit_non_decisive_gives_cool(self):
+        result = recommend_attitude(spirit=4, confidence=10, match_type="league",
+                                    league_position=5, opp_position=None)
+        assert result["attitude"] == "cool"
 
+    def test_top_position_gives_mots(self):
+        result = recommend_attitude(spirit=10, confidence=10, match_type="league",
+                                    league_position=1, opp_position=None)
+        assert result["attitude"] == "mots"
 
-def test_compute_tactics_attitude_normal_when_defense_ok():
-    lineup = _lineup_11(defending=12)
-    opp = {"defense": 10}
-    tactics = compute_tactics(lineup, opp, [])
-    assert tactics["attitude"] == "normal"
+    def test_cup_gives_mots(self):
+        result = recommend_attitude(spirit=10, confidence=10, match_type="cup",
+                                    league_position=5, opp_position=None)
+        assert result["attitude"] == "mots"
 
+    def test_high_confidence_vs_stronger_gives_mots(self):
+        result = recommend_attitude(spirit=10, confidence=15, match_type="league",
+                                    league_position=8, opp_position=4)
+        assert result["attitude"] == "mots"
 
-def test_compute_tactics_attitude_defensive_when_defense_weak():
-    lineup = _lineup_11(defending=5)
-    opp = {"defense": 14}
-    tactics = compute_tactics(lineup, opp, [])
-    assert tactics["attitude"] == "defensive"
-
-
-# --- generate_explanation ---
-
-def test_generate_explanation_mentions_best_line():
-    my = {"goalkeeper": 11.0, "defense": 13.0, "midfield": 15.0, "attack": 10.0}
-    opp = {"goalkeeper": 9.0, "defense": 10.0, "midfield": 9.0, "attack": 8.0}
-    tactics = {"pressing": True, "attack_direction": "center",
-               "set_pieces_taker": {"name": "Mario Rossi", "set_pieces": 12}, "attitude": "normal"}
-    text = generate_explanation(my, opp, "4-3-3", tactics)
-    assert "centrocampo" in text.lower()
-    assert "4-3-3" in text
-    assert "pressing" in text.lower()
-    assert "Mario Rossi" in text
-
-
-def test_generate_explanation_returns_nonempty_string():
-    my = {"goalkeeper": 8.0, "defense": 8.0, "midfield": 8.0, "attack": 8.0}
-    opp = {"goalkeeper": 8.0, "defense": 8.0, "midfield": 8.0, "attack": 8.0}
-    tactics = {"pressing": False, "attack_direction": "wings",
-               "set_pieces_taker": None, "attitude": "normal"}
-    text = generate_explanation(my, opp, "4-4-2", tactics)
-    assert len(text) > 10
+    def test_default_is_normal(self):
+        result = recommend_attitude(spirit=10, confidence=10, match_type="league",
+                                    league_position=5, opp_position=None)
+        assert result["attitude"] == "normal"

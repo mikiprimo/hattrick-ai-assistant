@@ -1,26 +1,63 @@
+from __future__ import annotations
+
 FORMATIONS = {
     "4-4-2": {"side_defenders": 2, "center_defenders": 2, "inside_mids": 2, "wingers": 2, "forwards": 2},
-    "4-5-1": {"side_defenders": 2, "center_defenders": 2, "inside_mids": 3, "wingers": 2, "forwards": 1},
-    "4-3-3": {"side_defenders": 2, "center_defenders": 2, "inside_mids": 1, "wingers": 2, "forwards": 3},
     "3-5-2": {"side_defenders": 0, "center_defenders": 3, "inside_mids": 3, "wingers": 2, "forwards": 2},
+    "4-3-3": {"side_defenders": 2, "center_defenders": 2, "inside_mids": 1, "wingers": 2, "forwards": 3},
+    "3-4-3": {"side_defenders": 0, "center_defenders": 3, "inside_mids": 2, "wingers": 2, "forwards": 3},
+    "5-4-1": {"side_defenders": 2, "center_defenders": 3, "inside_mids": 2, "wingers": 2, "forwards": 1},
+    "4-5-1": {"side_defenders": 2, "center_defenders": 2, "inside_mids": 3, "wingers": 2, "forwards": 1},
     "5-3-2": {"side_defenders": 2, "center_defenders": 3, "inside_mids": 1, "wingers": 2, "forwards": 2},
+    "5-2-3": {"side_defenders": 2, "center_defenders": 3, "inside_mids": 0, "wingers": 2, "forwards": 3},
+    "5-5-0": {"side_defenders": 2, "center_defenders": 3, "inside_mids": 3, "wingers": 2, "forwards": 0},
+    "2-5-3": {"side_defenders": 0, "center_defenders": 2, "inside_mids": 3, "wingers": 2, "forwards": 3},
 }
+
+_CENTER_DEF_PENALTY = {2: 0.95, 3: 0.90}
+_INSIDE_MID_PENALTY = {2: 0.90, 3: 0.80}
+_FORWARD_PENALTY    = {2: 0.925, 3: 0.87}
+
+TACTIC_NAMES = [
+    "Normal", "Pressing", "Contropiede",
+    "Attacco al Centro", "Attacco sulle Fasce",
+    "Tiri da Fuori", "Libertà d'Inventiva",
+]
 
 
 def role_rating(p, role: str) -> float:
     if role == "goalkeeper":
-        return float(p.goalkeeper)
+        return p.goalkeeper * 0.85 + p.defending * 0.10 + p.set_pieces * 0.05
     if role == "side_defender":
-        return p.defending * 0.7 + p.stamina * 0.3
+        return p.defending * 0.65 + p.winger * 0.20 + p.playmaking * 0.10 + p.passing * 0.05
     if role == "center_defender":
-        return p.defending * 0.8 + p.playmaking * 0.2
+        return p.defending * 0.75 + p.playmaking * 0.20 + p.passing * 0.05
     if role == "inside_mid":
-        return p.playmaking * 0.6 + p.passing * 0.4
+        return p.playmaking * 0.55 + p.passing * 0.25 + p.defending * 0.15 + p.scoring * 0.05
     if role == "winger":
-        return p.winger * 0.7 + p.passing * 0.3
+        return p.winger * 0.65 + p.playmaking * 0.20 + p.passing * 0.10 + p.defending * 0.05
     if role == "forward":
-        return p.scoring * 0.7 + p.passing * 0.3
+        return p.scoring * 0.65 + p.passing * 0.25 + p.winger * 0.10
     return 0.0
+
+
+def _apply_spirit_modifier(spirit: int) -> float:
+    return max(0.85, min(1.10, 0.85 + (spirit - 3) * 0.25 / 13))
+
+
+def _apply_confidence_modifier(confidence: int) -> float:
+    return max(0.88, min(1.08, 0.88 + (confidence - 3) * 0.20 / 13))
+
+
+def _apply_xp_modifier(xp: int) -> float:
+    if xp < 8:
+        return 0.90
+    if xp < 12:
+        return 0.95
+    return 1.0
+
+
+def _apply_form_modifier(avg_form: float) -> float:
+    return max(0.90, min(1.05, 0.90 + (avg_form - 3) * 0.15 / 12))
 
 
 def _assign(available: list, role: str, n: int) -> list:
@@ -34,40 +71,65 @@ def _assign(available: list, role: str, n: int) -> list:
     return result
 
 
+def _crowding_factor(players: list, role: str) -> float:
+    n = len(players)
+    if role == "center_defender":
+        return _CENTER_DEF_PENALTY.get(n, 1.0)
+    if role == "inside_mid":
+        return _INSIDE_MID_PENALTY.get(n, 1.0)
+    if role == "forward":
+        return _FORWARD_PENALTY.get(n, 1.0)
+    return 1.0
+
+
 def _build_lineup(players: list, formation_name: str) -> dict:
     available = list(players)
     f = FORMATIONS[formation_name]
 
-    gk = _assign(available, "goalkeeper", 1)
-    side_defs = _assign(available, "side_defender", f["side_defenders"])
+    gk          = _assign(available, "goalkeeper",      1)
+    side_defs   = _assign(available, "side_defender",   f["side_defenders"])
     center_defs = _assign(available, "center_defender", f["center_defenders"])
-    wingers = _assign(available, "winger", f["wingers"])
-    inside_mids = _assign(available, "inside_mid", f["inside_mids"])
-    forwards = _assign(available, "forward", f["forwards"])
+    wingers     = _assign(available, "winger",          f["wingers"])
+    inside_mids = _assign(available, "inside_mid",      f["inside_mids"])
+    forwards    = _assign(available, "forward",         f["forwards"])
+
+    cd_factor = _crowding_factor(center_defs, "center_defender")
+    im_factor = _crowding_factor(inside_mids, "inside_mid")
+    fw_factor = _crowding_factor(forwards,    "forward")
 
     all_defs = side_defs + center_defs
     all_mids = wingers + inside_mids
 
+    def_rating = 0.0
+    if all_defs:
+        total = sum(role_rating(p, "side_defender") for p in side_defs)
+        total += sum(role_rating(p, "center_defender") * cd_factor for p in center_defs)
+        def_rating = total / len(all_defs)
+
+    mid_rating = 0.0
+    if all_mids:
+        total = sum(role_rating(p, "winger") for p in wingers)
+        total += sum(role_rating(p, "inside_mid") * im_factor for p in inside_mids)
+        mid_rating = total / len(all_mids)
+
+    atk_rating = 0.0
+    if forwards:
+        atk_rating = sum(role_rating(p, "forward") * fw_factor for p in forwards) / len(forwards)
+
     line_ratings = {
         "goalkeeper": role_rating(gk[0], "goalkeeper") if gk else 0.0,
-        "defense": (
-            sum(role_rating(p, "side_defender") for p in side_defs) +
-            sum(role_rating(p, "center_defender") for p in center_defs)
-        ) / len(all_defs) if all_defs else 0.0,
-        "midfield": (
-            sum(role_rating(p, "winger") for p in wingers) +
-            sum(role_rating(p, "inside_mid") for p in inside_mids)
-        ) / len(all_mids) if all_mids else 0.0,
-        "attack": sum(role_rating(p, "forward") for p in forwards) / len(forwards) if forwards else 0.0,
+        "defense": def_rating,
+        "midfield": mid_rating,
+        "attack": atk_rating,
     }
 
     _groups = [
-        (gk,         "goalkeeper", "goalkeeper"),
-        (side_defs,  "defense",    "side_defender"),
-        (center_defs,"defense",    "center_defender"),
-        (wingers,    "midfield",   "winger"),
-        (inside_mids,"midfield",   "inside_mid"),
-        (forwards,   "attack",     "forward"),
+        (gk,          "goalkeeper", "goalkeeper"),
+        (side_defs,   "defense",    "side_defender"),
+        (center_defs, "defense",    "center_defender"),
+        (wingers,     "midfield",   "winger"),
+        (inside_mids, "midfield",   "inside_mid"),
+        (forwards,    "attack",     "forward"),
     ]
     lineup = [
         {"player": p, "line": line, "role": role}
@@ -78,54 +140,177 @@ def _build_lineup(players: list, formation_name: str) -> dict:
     return {"lineup": lineup, "line_ratings": line_ratings}
 
 
-def optimize_formation(players, opp_line_ratings: dict) -> tuple[str, dict]:
+def optimize_formation(
+    players,
+    opp_line_ratings: dict,
+    spirit: int = 10,
+    confidence: int = 10,
+    formation_xp: dict[str, int] | None = None,
+) -> tuple[str, dict]:
     healthy = [p for p in players if getattr(p, "injury_days", -1) <= 0]
     if not healthy:
         raise ValueError("Nessun giocatore sano disponibile")
+
+    formation_xp = formation_xp or {}
+    spirit_mod     = _apply_spirit_modifier(spirit)
+    confidence_mod = _apply_confidence_modifier(confidence)
+
     best_name, best_score, best_data = None, float("-inf"), None
+
     for name in FORMATIONS:
         data = _build_lineup(healthy, name)
+        lr   = data["line_ratings"]
+
+        xp       = formation_xp.get(name, 0)
+        xp_mod   = _apply_xp_modifier(xp)
+        avg_form = (sum(getattr(e["player"], "form", 10) for e in data["lineup"])
+                    / max(len(data["lineup"]), 1))
+        form_mod = _apply_form_modifier(avg_form)
+
+        modified = {
+            "goalkeeper": lr["goalkeeper"] * xp_mod * form_mod,
+            "defense":    lr["defense"]    * xp_mod * form_mod,
+            "midfield":   lr["midfield"]   * xp_mod * form_mod * spirit_mod,
+            "attack":     lr["attack"]     * xp_mod * form_mod * confidence_mod,
+        }
+        data["modified_ratings"] = modified
+        data["xp_level"] = xp
+
         score = sum(
-            max(0.0, data["line_ratings"][line] - opp_line_ratings.get(line, 0.0))
+            max(0.0, modified[line] - opp_line_ratings.get(line, 0.0))
             for line in ("goalkeeper", "defense", "midfield", "attack")
         )
+
         if score > best_score:
             best_score, best_name, best_data = score, name, data
+
     return best_name, best_data
 
 
-def compute_tactics(lineup_data: list, opp_line_ratings: dict, recent_results: list) -> dict:
-    titolari = [e["player"] for e in lineup_data]
+def rank_tactics(
+    lineup: list[dict],
+    opp_line_ratings: dict,
+    my_modified_ratings: dict,
+) -> list[dict]:
+    titolari  = [e["player"] for e in lineup]
+    outfield  = [e["player"] for e in lineup if e["line"] != "goalkeeper"]
+    defenders = [e["player"] for e in lineup if e["line"] == "defense"]
+    my_wingers = [e["player"] for e in lineup if e["role"] == "winger"]
 
-    stamina_avg = sum(p.stamina for p in titolari) / len(titolari) if titolari else 0
-    opp_wins = sum(1 for r in recent_results[:4] if r.result == "W")
-    pressing = stamina_avg >= 6 and opp_wins <= 1
+    opp_def       = opp_line_ratings.get("defense", 7.0)
+    opp_mid       = opp_line_ratings.get("midfield", 7.0)
+    my_winger_avg = (sum(getattr(p, "winger", 0) for p in my_wingers) / len(my_wingers)
+                     if my_wingers else 0.0)
 
-    outfield = [e["player"] for e in lineup_data if e["line"] != "goalkeeper"]
-    avg_ply = sum(p.playmaking for p in outfield) / len(outfield) if outfield else 0
-    avg_win = sum(p.winger for p in outfield) / len(outfield) if outfield else 0
-    attack_direction = "center" if avg_ply >= avg_win else "wings"
+    def _quick(p) -> bool:
+        sp = (getattr(p, "speciality", None) or "").lower()
+        return "quick" in sp or "veloce" in sp
 
-    sp_player = max(titolari, key=lambda p: p.set_pieces) if titolari else None
-    set_pieces_taker = (
-        {"name": f"{sp_player.first_name} {sp_player.last_name}", "set_pieces": sp_player.set_pieces}
-        if sp_player else None
-    )
+    def _unpredictable(p) -> bool:
+        sp = (getattr(p, "speciality", None) or "").lower()
+        return "unpredictable" in sp or "imprevedibile" in sp
 
-    def_players = [e["player"] for e in lineup_data if e["line"] == "defense"]
-    my_def_avg = sum(p.defending for p in def_players) / len(def_players) if def_players else 0
-    attitude = "normal" if my_def_avg >= opp_line_ratings.get("defense", 0) else "defensive"
+    results = []
 
-    return {
-        "pressing": pressing,
-        "attack_direction": attack_direction,
-        "set_pieces_taker": set_pieces_taker,
-        "attitude": attitude,
-    }
+    # Normal
+    results.append({
+        "name": "Normal",
+        "score": 0.0,
+        "explanation": "Gioco equilibrato senza modificatori tattici.",
+    })
+
+    # Pressing
+    pressing_score = (sum(getattr(p, "defending", 0) + getattr(p, "stamina", 0) for p in titolari)
+                      / max(len(titolari), 1))
+    results.append({
+        "name": "Pressing",
+        "score": round(pressing_score, 2),
+        "explanation": f"Pressing attivo: stamina e difesa media = {pressing_score:.1f}.",
+    })
+
+    # Contropiede
+    ctrop_base = sum(getattr(p, "defending", 0) + getattr(p, "passing", 0) * 2 for p in defenders)
+    quick_bonus = sum(0.15 for p in outfield if _quick(p))
+    ctrop_score = ctrop_base * (1 + quick_bonus)
+    results.append({
+        "name": "Contropiede",
+        "score": round(ctrop_score, 2),
+        "explanation": f"Contropiede: difensori+bonus velocisti = {ctrop_score:.1f}.",
+    })
+
+    # Attacco al Centro
+    centro_base = sum(getattr(p, "passing", 0) for p in outfield)
+    centro_score = centro_base * (1.20 if opp_def < 7 else 1.0)
+    results.append({
+        "name": "Attacco al Centro",
+        "score": round(centro_score, 2),
+        "explanation": (f"Attacco centrale: {centro_score:.1f}"
+                        + (" (+20% difesa avv. debole)" if opp_def < 7 else "") + "."),
+    })
+
+    # Attacco sulle Fasce
+    fasce_base = sum(getattr(p, "passing", 0) for p in outfield)
+    fasce_score = fasce_base * (1.20 if my_winger_avg > opp_mid else 1.0)
+    results.append({
+        "name": "Attacco sulle Fasce",
+        "score": round(fasce_score, 2),
+        "explanation": (f"Attacco sulle fasce: {fasce_score:.1f}"
+                        + (" (+20% ali superiori)" if my_winger_avg > opp_mid else "") + "."),
+    })
+
+    # Tiri da Fuori
+    tdf_base = sum(getattr(p, "scoring", 0) + getattr(p, "set_pieces", 0) / 3 for p in outfield)
+    tdf_score = tdf_base * (1.10 if opp_def >= 8 else 1.0)
+    results.append({
+        "name": "Tiri da Fuori",
+        "score": round(tdf_score, 2),
+        "explanation": (f"Tiri da fuori: {tdf_score:.1f}"
+                        + (" (+10% difesa avv. alta)" if opp_def >= 8 else "") + "."),
+    })
+
+    # Libertà d'Inventiva
+    lib_base = sum(getattr(p, "passing", 0) + getattr(p, "experience", 0) for p in outfield)
+    unp_bonus = sum(0.25 for p in outfield if _unpredictable(p))
+    lib_score = lib_base * (1 + unp_bonus)
+    results.append({
+        "name": "Libertà d'Inventiva",
+        "score": round(lib_score, 2),
+        "explanation": (f"Libertà d'inventiva: {lib_score:.1f}"
+                        + (f" (+{unp_bonus*100:.0f}% imprevedibili)" if unp_bonus > 0 else "") + "."),
+    })
+
+    results.sort(key=lambda x: x["score"], reverse=True)
+    return results
 
 
-def generate_explanation(my_line_ratings: dict, opp_line_ratings: dict,
-                         formation: str, tactics: dict) -> str:
+def recommend_attitude(
+    spirit: int,
+    confidence: int,
+    match_type: str,
+    league_position: int | None,
+    opp_position: int | None,
+) -> dict:
+    pos = league_position or 99
+
+    if spirit <= 5 and match_type != "cup":
+        return {"attitude": "cool", "reason": "Spirito basso: risparmia energie con la Partitella."}
+
+    if spirit >= 8 and (pos <= 2 or match_type == "cup"):
+        return {"attitude": "mots", "reason": "Posizione o coppa: gioca la Partita della Stagione."}
+
+    if confidence >= 15 and opp_position is not None and opp_position <= pos - 3:
+        return {"attitude": "mots", "reason": "Avversario più forte: MotS per annullare la sottovalutazione."}
+
+    return {"attitude": "normal", "reason": "Condizioni standard: atteggiamento Normale."}
+
+
+def generate_explanation(
+    my_line_ratings: dict,
+    opp_line_ratings: dict,
+    formation: str,
+    best_tactic: str,
+    attitude: dict,
+) -> str:
     LINE_IT = {
         "goalkeeper": "portiere", "defense": "difesa",
         "midfield": "centrocampo", "attack": "attacco",
@@ -142,19 +327,9 @@ def generate_explanation(my_line_ratings: dict, opp_line_ratings: dict,
     else:
         parts.append("la partita è equilibrata")
 
-    parts.append(f"usa il {formation} per massimizzare questo vantaggio")
-
-    if tactics.get("pressing"):
-        parts.append("applica il pressing: la tua resistenza è maggiore")
-
-    if tactics.get("attack_direction") == "center":
-        parts.append("attacca al centro dove il tuo playmaking domina")
-    else:
-        parts.append("usa le fasce dove i tuoi ali fanno la differenza")
-
-    sp = tactics.get("set_pieces_taker")
-    if sp:
-        parts.append(f"calci piazzati a {sp['name']} (SP {sp['set_pieces']})")
+    parts.append(f"usa il {formation}")
+    parts.append(f"tattica consigliata: {best_tactic}")
+    parts.append(attitude["reason"])
 
     text = ". ".join(parts)
     return text[0].upper() + text[1:] + "." if text else ""

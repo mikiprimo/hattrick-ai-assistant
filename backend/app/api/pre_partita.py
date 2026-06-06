@@ -4,7 +4,9 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.queries import get_current_players
 from app.hrf.opponent_parser import parse_opponent_players, parse_opponent_matches
-from app.hrf.strategy import role_rating, optimize_formation, compute_tactics, generate_explanation
+from app.hrf.strategy import (
+    role_rating, optimize_formation, rank_tactics, recommend_attitude, generate_explanation,
+)
 
 router = APIRouter()
 
@@ -78,8 +80,29 @@ def analyze(body: AnalyzeRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=422, detail=f"Rosa locale: {e}")
     my_ratings = my_data["line_ratings"]
 
-    tactics = compute_tactics(my_data["lineup"], opp_ratings, opp_recent)
-    explanation = generate_explanation(my_ratings, opp_ratings, my_formation, tactics)
+    tactics_ranked = rank_tactics(my_data["lineup"], opp_ratings, my_data.get("modified_ratings", my_ratings))
+    best_tactic = tactics_ranked[0]["name"] if tactics_ranked else "Normal"
+    attitude = recommend_attitude(
+        spirit=10, confidence=10, match_type="league",
+        league_position=None, opp_position=None,
+    )
+    explanation = generate_explanation(my_ratings, opp_ratings, my_formation, best_tactic, attitude)
+
+    # Build backward-compatible tactics dict for existing API consumers
+    titolari = [e["player"] for e in my_data["lineup"]]
+    outfield = [e["player"] for e in my_data["lineup"] if e["line"] != "goalkeeper"]
+    avg_ply = sum(p.playmaking for p in outfield) / len(outfield) if outfield else 0
+    avg_win = sum(p.winger for p in outfield) / len(outfield) if outfield else 0
+    sp_player = max(titolari, key=lambda p: p.set_pieces) if titolari else None
+    tactics_compat = {
+        "pressing": bool(sum(p.stamina for p in titolari) / len(titolari) >= 6) if titolari else False,
+        "attack_direction": "center" if avg_ply >= avg_win else "wings",
+        "set_pieces_taker": (
+            {"name": f"{sp_player.first_name} {sp_player.last_name}", "set_pieces": sp_player.set_pieces}
+            if sp_player else None
+        ),
+        "attitude": attitude["attitude"],
+    }
 
     def fmt_lineup(lineup_data):
         by_line: dict[str, list] = {"goalkeeper": [], "defense": [], "midfield": [], "attack": []}
@@ -107,6 +130,7 @@ def analyze(body: AnalyzeRequest, db: Session = Depends(get_db)):
             "lineup": fmt_lineup(my_data["lineup"]),
             "line_ratings": {k: round(v, 1) for k, v in my_ratings.items()},
         },
-        "tactics": tactics,
+        "tactics": tactics_compat,
+        "tactics_ranked": tactics_ranked,
         "explanation": explanation,
     }

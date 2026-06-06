@@ -1,10 +1,14 @@
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, configure_mappers
 from sqlalchemy.pool import StaticPool
 from app.main import app
 from app.database import Base, get_db
+
+# Ensure all SQLAlchemy mappers are fully configured so that Player.__new__()
+# instances can have their instrumented attributes accessed via __dict__ lookup.
+configure_mappers()
 
 
 @pytest.fixture
