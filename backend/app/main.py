@@ -36,6 +36,7 @@ from app.api import players as players_router
 from app.api import matches as matches_router
 from app.api import pre_partita as pre_partita_router
 from app.api import seasonal as seasonal_router
+from app.api import rivals as rivals_router
 
 app.include_router(settings_router.router, prefix="/api")
 app.include_router(squad_router.router, prefix="/api")
@@ -44,3 +45,4 @@ app.include_router(players_router.router, prefix="/api")
 app.include_router(matches_router.router, prefix="/api")
 app.include_router(pre_partita_router.router, prefix="/api")
 app.include_router(seasonal_router.router, prefix="/api")
+app.include_router(rivals_router.router, prefix="/api")
