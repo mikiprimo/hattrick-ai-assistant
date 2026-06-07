@@ -34,6 +34,12 @@ def run_migrations(engine) -> None:
             with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE match_snapshots ADD COLUMN league_series TEXT DEFAULT ''"))
 
+    if "seasonal_objective" in tables:
+        so_cols = {c["name"] for c in inspector.get_columns("seasonal_objective")}
+        if "strategy_changed_at" not in so_cols:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE seasonal_objective ADD COLUMN strategy_changed_at DATETIME"))
+
     # Drop formation_xp and match_prep if they have old incompatible schemas
     if "formation_xp" in tables:
         cols = {c["name"] for c in inspector.get_columns("formation_xp")}

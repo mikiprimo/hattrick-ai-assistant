@@ -17,3 +17,4 @@ class SeasonalObjective(Base):
     strategy: Mapped[str] = mapped_column(String, default="maintain")
     notes: Mapped[str] = mapped_column(Text, default="")
     recommendation: Mapped[str] = mapped_column(Text, default="")
+    strategy_changed_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
