@@ -56,7 +56,7 @@ BACKEND
     detect_pressing(opp_profile) → bool
     recommend_tactic(opp_profile, my_lineup, is_home, my_tactic_xp) → TacticRec
     generate_sub_plan(lineup, bench, is_home, spirit, confidence) → list[SubOrder]
-    generate_attitude_orders(spirit, confidence, is_home) → list[AttitudeOrder]
+    generate_attitude_orders(sub_plan, is_home, spirit, confidence) → list[AttitudeOrder]
 
   pre_partita.py
     AnalyzeRequest esteso
@@ -229,7 +229,7 @@ Algoritmo:
 
 Il sostituto è scelto con lo stesso filtro ruolo già corretto in questa sessione (etichette italiane: "Difensore", "Centrocampista", ecc.) e con `best_role != "Portiere"` nel fallback.
 
-### `generate_attitude_orders(spirit, confidence, is_home) -> list[AttitudeOrder]`
+### `generate_attitude_orders(sub_plan, is_home, spirit, confidence) -> list[AttitudeOrder]`
 
 ```python
 @dataclass
@@ -240,14 +240,35 @@ class AttitudeOrder:
     reason:    str
 ```
 
-Regole fisse (emerse dall'analisi):
+I minuti **non sono costanti**: vengono derivati dal `sub_plan` già generato, in modo che gli ordini di atteggiamento siano coerenti con i cambi programmati. La firma riceve `sub_plan: list[SubOrder]` come primo argomento.
 
-| is_home | Minuto | Condizione | Atteggiamento |
-|---------|--------|------------|---------------|
-| entrambi | 70' | se in svantaggio | Offensivo |
-| entrambi | 75' | se in vantaggio | Difensivo (PIC) |
-| `True`  | 80' | se in pareggio | Offensivo |
-| `False` | 80' | se in pareggio | Non cambiare |
+**Vincolo Hattrick**: i minuti per gli ordini condizionali sono discreti — solo multipli di 5 nel range 60'–85'. Il sistema calcola il minuto ideale e lo arrotonda al multiplo di 5 più vicino con `_snap_to_hattrick_minute(m) = round(m / 5) * 5`, clampato a [60, 85].
+
+**Logica di derivazione per ciascun ordine:**
+
+**1. Offensivo se in svantaggio**
+- Ancora: minuto del sub con `condition="se non in vantaggio"` (slot offensivo) + 2'
+- Ragionamento: il sostituto offensivo entra, poi si alza l'atteggiamento per sfruttarlo subito
+- Fallback se nessun sub offensivo: 70'
+
+**2. Difensivo se in vantaggio**
+- Ancora: minuto dell'ultimo slot di sub disponibile - 3'
+- Ragionamento: si cambia atteggiamento poco prima di usare l'ultimo slot per "blindare"
+- Fallback: 75'
+
+**3. Gestione del pareggio**
+- Ancora: `90 - (90 - minuto_ultimo_sub_disponibile) / 2` → punto medio tra l'ultimo cambio e il 90'
+- `is_home=True`: Offensivo — in casa un pareggio non basta, si spinge
+- `is_home=False`: Non cambiare — in trasferta un punto vale oro, non si rischia
+- Fallback: 80'
+
+**Esempio con sub plan [57' fisso, 65' condizionale, 80' condizionale]:**
+
+| Ordine | Calcolo | Minuto snapped | Condizione | Atteggiamento |
+|--------|---------|----------------|------------|---------------|
+| Offensivo | 65 + 2 = 67 → snap | 65' | se in svantaggio | Offensivo |
+| Difensivo | 80 - 3 = 77 → snap | 75' | se in vantaggio | Difensivo (PIC) |
+| Pareggio  | (90+80)/2 = 85 → snap | 85' | se in pareggio | Non cambiare (trasferta) |
 
 Atteggiamento iniziale calcolato da `recommend_attitude()` esistente (invariato).
 
@@ -402,4 +423,6 @@ Minuto │ Condizione        │ Atteggiamento   │ Motivo
 | Deflazione 12% per partite giocate in casa dall'avversario | Normalizza al contesto neutro prima della media |
 | `tactic_ranking` non rimosso dalla response | Backward compatibility — il frontend lo ignora ma non crasha |
 | Minuto sub = `stamina * 12 - 3` | Empirico: stam 5 → 57', stam 6 → 69', si avvicina al crollo reale |
-| `is_home=False @80' pareggio → Non cambiare` | In trasferta 1 punto è il risultato accettabile |
+| `is_home=False @pareggio → Non cambiare` | In trasferta 1 punto è il risultato accettabile |
+| Minuti attitude orders derivati dal sub plan | I minuti 70/75/80 di una singola analisi non sono costanti universali — il contesto tattico cambia a seconda di quando avvengono i cambi |
+| Snap a multipli di 5 nel range [60,85] | Hattrick accetta solo minuti discreti per gli ordini condizionali |
