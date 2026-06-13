@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<HattrickData>
+  <Match>
+    <MatchID>762000001</MatchID>
+    <MatchType>1</MatchType>
+    <MatchDate>2026-05-30 12:00:00</MatchDate>
+    <HomeGoals>1</HomeGoals>
+    <AwayGoals>3</AwayGoals>
+    <HomeTeam>
+      <HomeTeamID>547412</HomeTeamID>
+      <HomeTeamName>Pace-Mela</HomeTeamName>
+      <Formation>4-4-2</Formation>
+      <TacticType>0</TacticType>
+      <TacticSkill>0</TacticSkill>
+      <RatingMidfield>22</RatingMidfield>
+      <RatingRightDef>28</RatingRightDef>
+      <RatingMidDef>30</RatingMidDef>
+      <RatingLeftDef>27</RatingLeftDef>
+      <RatingRightAtt>24</RatingRightAtt>
+      <RatingMidAtt>26</RatingMidAtt>
+      <RatingLeftAtt>23</RatingLeftAtt>
+    </HomeTeam>
+    <AwayTeam>
+      <AwayTeamID>237132</AwayTeamID>
+      <AwayTeamName>i tarallos</AwayTeamName>
+      <Formation>2-5-3</Formation>
+      <TacticType>3</TacticType>
+      <TacticSkill>16</TacticSkill>
+      <RatingMidfield>25</RatingMidfield>
+      <RatingRightDef>18</RatingRightDef>
+      <RatingMidDef>38</RatingMidDef>
+      <RatingLeftDef>19</RatingLeftDef>
+      <RatingRightAtt>20</RatingRightAtt>
+      <RatingMidAtt>40</RatingMidAtt>
+      <RatingLeftAtt>22</RatingLeftAtt>
+    </AwayTeam>
+  </Match>
+</HattrickData>

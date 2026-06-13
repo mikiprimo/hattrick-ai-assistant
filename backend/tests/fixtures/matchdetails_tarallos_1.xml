@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<HattrickData>
+  <Match>
+    <MatchID>762443878</MatchID>
+    <MatchType>1</MatchType>
+    <MatchDate>2026-06-06 12:00:00</MatchDate>
+    <HomeGoals>5</HomeGoals>
+    <AwayGoals>2</AwayGoals>
+    <HomeTeam>
+      <HomeTeamID>237132</HomeTeamID>
+      <HomeTeamName>i tarallos</HomeTeamName>
+      <Formation>2-5-3</Formation>
+      <TacticType>3</TacticType>
+      <TacticSkill>18</TacticSkill>
+      <RatingMidfield>30</RatingMidfield>
+      <RatingRightDef>24</RatingRightDef>
+      <RatingMidDef>46</RatingMidDef>
+      <RatingLeftDef>25</RatingLeftDef>
+      <RatingRightAtt>25</RatingRightAtt>
+      <RatingMidAtt>47</RatingMidAtt>
+      <RatingLeftAtt>28</RatingLeftAtt>
+    </HomeTeam>
+    <AwayTeam>
+      <AwayTeamID>728316</AwayTeamID>
+      <AwayTeamName>real volley f.c.</AwayTeamName>
+      <Formation>3-5-2</Formation>
+      <TacticType>0</TacticType>
+      <TacticSkill>0</TacticSkill>
+      <RatingMidfield>28</RatingMidfield>
+      <RatingRightDef>46</RatingRightDef>
+      <RatingMidDef>42</RatingMidDef>
+      <RatingLeftDef>44</RatingLeftDef>
+      <RatingRightAtt>47</RatingRightAtt>
+      <RatingMidAtt>55</RatingMidAtt>
+      <RatingLeftAtt>52</RatingLeftAtt>
+    </AwayTeam>
+  </Match>
+</HattrickData>
