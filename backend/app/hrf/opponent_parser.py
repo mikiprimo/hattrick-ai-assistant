@@ -42,6 +42,35 @@ class TeamMatchData:
     match_date:    str
 
 
+_HOME_NORMALIZE = 0.88  # deflate ratings from matches where opponent played at home
+
+
+@dataclass
+class OppMatchData:
+    team_id:       int
+    team_name:     str
+    was_home:      bool
+    formation:     str
+    tactic_type:   int
+    tactic_skill:  int
+    line_ratings:  dict
+    goals_for:     int
+    goals_against: int
+    match_date:    str
+
+
+@dataclass
+class OppProfile:
+    team_id:           int
+    team_name:         str
+    avg_line_ratings:  dict
+    dominant_tactic:   int | None
+    avg_tactic_skill:  float
+    typical_formation: str
+    recent_results:    list
+    matches_used:      int
+
+
 def _int_text(el, tag: str, default: int = 0) -> int:
     try:
         return int(el.findtext(tag, str(default)))
@@ -166,3 +195,76 @@ def detect_opponent_team_id(xmls: list[str]) -> int:
         return common.pop()
     home, _ = parse_both_teams(xmls[0])
     return home.team_id
+
+
+def parse_opponent_matchdetails(xml_str: str, opponent_team_id: int) -> OppMatchData:
+    """Extract opponent data from a matchdetails XML."""
+    home, away = parse_both_teams(xml_str)
+    if home.team_id == opponent_team_id:
+        t = home
+    elif away.team_id == opponent_team_id:
+        t = away
+    else:
+        raise ValueError(f"Team {opponent_team_id} non trovato nel match XML")
+    return OppMatchData(
+        team_id=t.team_id,
+        team_name=t.team_name,
+        was_home=t.is_home,
+        formation=t.formation,
+        tactic_type=t.tactic_type,
+        tactic_skill=t.tactic_skill,
+        line_ratings=t.line_ratings,
+        goals_for=t.goals_for,
+        goals_against=t.goals_against,
+        match_date=t.match_date,
+    )
+
+
+def average_opponent_profiles(matches: list[OppMatchData]) -> OppProfile:
+    """Weighted average of opponent match data. Tab 1 = weight 3, tab 2 = 2, tab 3 = 1.
+    Normalizes home matches by deflating ratings by _HOME_NORMALIZE."""
+    from collections import Counter
+
+    weights = [3, 2, 1][: len(matches)]
+    total_weight = sum(weights)
+
+    # Normalize: deflate ratings from matches where opponent played at home
+    normalized = []
+    for m in matches:
+        factor = _HOME_NORMALIZE if m.was_home else 1.0
+        normalized.append({k: v * factor for k, v in m.line_ratings.items()})
+
+    keys = ["midfield", "mid_def", "mid_att", "right_def", "left_def", "right_att", "left_att"]
+    avg_ratings = {
+        k: sum(normalized[i][k] * weights[i] for i in range(len(matches))) / total_weight
+        for k in keys
+    }
+
+    # Dominant tactic: appears in >=2 matches, else first match's tactic
+    tactics = [m.tactic_type for m in matches]
+    if len(matches) >= 2:
+        counts = Counter(tactics)
+        mc, count = counts.most_common(1)[0]
+        dominant = mc if count >= 2 else None
+    else:
+        dominant = tactics[0]
+
+    avg_skill = sum(m.tactic_skill * weights[i] for i, m in enumerate(matches)) / total_weight
+    typical_formation = Counter(m.formation for m in matches).most_common(1)[0][0]
+
+    recent_results = []
+    for m in matches:
+        gf, ga = m.goals_for, m.goals_against
+        result = "W" if gf > ga else "D" if gf == ga else "L"
+        recent_results.append({"result": result, "goals_for": gf, "goals_against": ga})
+
+    return OppProfile(
+        team_id=matches[0].team_id,
+        team_name=matches[0].team_name,
+        avg_line_ratings=avg_ratings,
+        dominant_tactic=dominant,
+        avg_tactic_skill=avg_skill,
+        typical_formation=typical_formation,
+        recent_results=recent_results,
+        matches_used=len(matches),
+    )
