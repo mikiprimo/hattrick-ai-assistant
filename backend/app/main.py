@@ -8,6 +8,7 @@ from app.models.hrf_settings import HRFSettings  # noqa: F401
 from app.models.match_snapshot import MatchSnapshot  # noqa: F401
 from app.models.match_prep import MatchPrep  # noqa: F401
 from app.models.formation_xp import FormationXP  # noqa: F401
+from app.models.tactic_xp import TacticXP  # noqa: F401
 from app.models.seasonal_objective import SeasonalObjective  # noqa: F401
 from app.models.rival_team import RivalTeam  # noqa: F401
 from app.models.rival_player import RivalPlayer  # noqa: F401

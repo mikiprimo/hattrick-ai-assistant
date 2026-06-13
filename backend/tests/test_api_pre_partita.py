@@ -68,6 +68,33 @@ def test_get_squad_returns_players_with_skills(client, db):
 
 
 # ---------------------------------------------------------------------------
+# Tactic XP endpoints
+# ---------------------------------------------------------------------------
+
+def test_get_tactic_xp_empty(client):
+    resp = client.get("/api/pre-partita/tactic-xp")
+    assert resp.status_code == 200
+    assert "tactic_xp" in resp.json()
+    assert isinstance(resp.json()["tactic_xp"], dict)
+
+
+def test_put_tactic_xp(client):
+    resp = client.put("/api/pre-partita/tactic-xp", json={
+        "tactic_name": "Pressing", "xp_level": 12,
+    })
+    assert resp.status_code == 200
+    resp2 = client.get("/api/pre-partita/tactic-xp")
+    assert resp2.json()["tactic_xp"]["Pressing"] == 12
+
+
+def test_put_tactic_xp_invalid_name(client):
+    resp = client.put("/api/pre-partita/tactic-xp", json={
+        "tactic_name": "FakeRobotTactic", "xp_level": 5,
+    })
+    assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
 # Formation XP endpoints
 # ---------------------------------------------------------------------------
 

@@ -11,6 +11,7 @@ from app.hrf.strategy import (
     recommend_attitude, generate_explanation,
 )
 from app.models.formation_xp import FormationXP
+from app.models.tactic_xp import TacticXP, VALID_TACTICS
 from app.models.match_prep import MatchPrep
 
 router = APIRouter()
@@ -73,6 +74,31 @@ def put_formation_xp(body: FormationXPUpdate, db: Session = Depends(get_db)):
         row.updated_at = datetime.utcnow()
     else:
         db.add(FormationXP(formation_name=body.formation_name, xp_level=body.xp_level))
+    db.commit()
+    return {"ok": True}
+
+
+@router.get("/pre-partita/tactic-xp")
+def get_tactic_xp(db: Session = Depends(get_db)):
+    rows = db.query(TacticXP).all()
+    return {"tactic_xp": {r.tactic_name: r.xp_level for r in rows}}
+
+
+class TacticXPUpdate(BaseModel):
+    tactic_name: str
+    xp_level: int
+
+
+@router.put("/pre-partita/tactic-xp")
+def put_tactic_xp(body: TacticXPUpdate, db: Session = Depends(get_db)):
+    if body.tactic_name not in VALID_TACTICS:
+        raise HTTPException(status_code=422, detail=f"Tattica non valida: {body.tactic_name}")
+    row = db.query(TacticXP).filter_by(tactic_name=body.tactic_name).first()
+    if row:
+        row.xp_level = body.xp_level
+        row.updated_at = datetime.utcnow()
+    else:
+        db.add(TacticXP(tactic_name=body.tactic_name, xp_level=body.xp_level))
     db.commit()
     return {"ok": True}
 
