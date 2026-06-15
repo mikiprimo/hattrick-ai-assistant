@@ -4,6 +4,15 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.seasonal_objective import SeasonalObjective
+from app.models.player import Player
+from app.models.player_skill_history import PlayerSkillHistory
+from app.models.match_snapshot import MatchSnapshot
+from app.models.rival_team import RivalTeam
+from app.models.rival_player import RivalPlayer
+from app.models.rival_ratings_manual import RivalRatingsManual
+from app.hrf.seasonal_analysis import (
+    compute_status, analyze_youth, analyze_maintain, analyze_promote,
+)
 
 router = APIRouter()
 
@@ -86,6 +95,77 @@ def create_or_update(body: SeasonalRequest, db: Session = Depends(get_db)):
 def get_history(db: Session = Depends(get_db)):
     rows = db.query(SeasonalObjective).order_by(SeasonalObjective.season.desc()).all()
     return {"history": [_serialize(r) for r in rows]}
+
+
+@router.get("/seasonal/status")
+def get_status(db: Session = Depends(get_db)):
+    obj = db.query(SeasonalObjective).order_by(SeasonalObjective.season.desc()).first()
+    latest = db.query(MatchSnapshot).order_by(MatchSnapshot.snapshot_date.desc()).first()
+
+    if not obj or not latest:
+        return compute_status("maintain", 0, 0, 0, [])
+
+    history_rows = (
+        db.query(MatchSnapshot)
+        .filter(MatchSnapshot.season == latest.season)
+        .order_by(MatchSnapshot.matchround)
+        .all()
+    )
+    history = [
+        {"matchround": s.matchround, "points": s.league_points, "position": s.league_position}
+        for s in history_rows
+    ]
+    return compute_status(
+        obj.strategy,
+        latest.league_position,
+        latest.league_points,
+        latest.league_played,
+        history,
+    )
+
+
+@router.get("/seasonal/analysis/youth")
+def analysis_youth(db: Session = Depends(get_db)):
+    latest = db.query(MatchSnapshot).order_by(MatchSnapshot.snapshot_date.desc()).first()
+    players = db.query(Player).all()
+    history = []
+    if latest:
+        history = (
+            db.query(PlayerSkillHistory)
+            .join(MatchSnapshot, PlayerSkillHistory.snapshot_date == MatchSnapshot.snapshot_date)
+            .filter(MatchSnapshot.season == latest.season)
+            .all()
+        )
+    return analyze_youth(players, history)
+
+
+@router.get("/seasonal/analysis/maintain")
+def analysis_maintain(db: Session = Depends(get_db)):
+    players = db.query(Player).all()
+    return analyze_maintain(players)
+
+
+@router.get("/seasonal/analysis/promote")
+def analysis_promote(db: Session = Depends(get_db)):
+    players = db.query(Player).all()
+    latest = db.query(MatchSnapshot).order_by(MatchSnapshot.snapshot_date.desc()).first()
+    series = latest.league_series if latest else ""
+
+    teams = db.query(RivalTeam).filter_by(league_series=series).all() if series else []
+    rivals = []
+    for t in teams:
+        rp = db.query(RivalPlayer).filter_by(team_id=t.team_id).all()
+        manual = db.query(RivalRatingsManual).filter_by(team_id=t.team_id).first()
+        rivals.append({
+            "team_name": t.team_name,
+            "players": rp,
+            "manual_ratings": {
+                "defense": manual.defense,
+                "midfield": manual.midfield,
+                "attack": manual.attack,
+            } if manual else None,
+        })
+    return analyze_promote(players, rivals)
 
 
 def _serialize(obj: SeasonalObjective) -> dict:
