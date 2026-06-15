@@ -5,10 +5,14 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.queries import get_current_players
-from app.hrf.opponent_parser import parse_opponent_players, parse_opponent_matches
+from app.hrf.opponent_parser import (
+    detect_opponent_team_id, parse_opponent_matchdetails, average_opponent_profiles,
+)
 from app.hrf.strategy import (
     FORMATIONS, role_rating, optimize_formation, rank_tactics,
-    recommend_attitude, generate_explanation,
+    recommend_attitude, generate_explanation, recommend_tactic,
+    generate_sub_plan, generate_attitude_orders,
+    apply_home_away_modifier, _chpp_to_app_scale,
 )
 from app.models.formation_xp import FormationXP
 from app.models.tactic_xp import TacticXP, VALID_TACTICS
@@ -104,47 +108,53 @@ def put_tactic_xp(body: TacticXPUpdate, db: Session = Depends(get_db)):
 
 
 class AnalyzeRequest(BaseModel):
-    players_xml: str
-    matches_xml: str = ""
+    matchdetails_xml_1: str
+    matchdetails_xml_2: str = ""
+    matchdetails_xml_3: str = ""
+    is_home: bool = True
     match_type: str = "league"
     spirit: int = 10
     confidence: int = 10
     formation_xp: dict[str, int] = {}
+    tactic_xp: dict[str, int] = {}
 
 
 @router.post("/pre-partita/analyze")
 def analyze(body: AnalyzeRequest, db: Session = Depends(get_db)):
-    if not body.players_xml.strip():
-        raise HTTPException(status_code=422, detail="players_xml obbligatorio")
+    if not body.matchdetails_xml_1.strip():
+        raise HTTPException(status_code=422, detail="matchdetails_xml_1 obbligatorio")
+
+    xmls = [x for x in [
+        body.matchdetails_xml_1,
+        body.matchdetails_xml_2,
+        body.matchdetails_xml_3,
+    ] if x.strip()]
 
     try:
-        opp_team_id, opp_team_name, opp_players = parse_opponent_players(body.players_xml)
+        opponent_team_id = detect_opponent_team_id(xmls)
+        opp_matches = [parse_opponent_matchdetails(xml, opponent_team_id) for xml in xmls]
+        opp_profile = average_opponent_profiles(opp_matches)
     except Exception as e:
-        raise HTTPException(status_code=422, detail=f"players_xml non valido: {e}")
+        raise HTTPException(status_code=422, detail=f"matchdetails_xml_1 non valido: {e}")
 
-    opp_recent = []
-    if body.matches_xml.strip():
-        try:
-            opp_recent = parse_opponent_matches(body.matches_xml, opp_team_id)
-        except Exception as e:
-            raise HTTPException(status_code=422, detail=f"matches_xml non valido: {e}")
-
-    try:
-        opp_formation, opp_data = optimize_formation(opp_players, {})
-    except ValueError as e:
-        raise HTTPException(status_code=422, detail=f"Avversario: {e}")
-    opp_ratings = opp_data["line_ratings"]
+    adjusted_chpp = apply_home_away_modifier(opp_profile.avg_line_ratings, body.is_home)
+    app_opp = _chpp_to_app_scale(adjusted_chpp)
 
     my_players = get_current_players(db)
-    db_xp = {r.formation_name: r.xp_level for r in db.query(FormationXP).all()}
-    merged_xp = {**db_xp, **body.formation_xp}
+    db_fxp = {r.formation_name: r.xp_level for r in db.query(FormationXP).all()}
+    merged_fxp = {**db_fxp, **body.formation_xp}
+    db_txp = {r.tactic_name: r.xp_level for r in db.query(TacticXP).all()}
+    merged_txp = {**db_txp, **body.tactic_xp}
+
+    home_mod = 1.06 if body.is_home else 1.0
 
     try:
         my_formation, my_data = optimize_formation(
-            my_players, opp_ratings,
+            my_players, app_opp,
             spirit=body.spirit,
             confidence=body.confidence,
-            formation_xp=merged_xp,
+            formation_xp=merged_fxp,
+            home_mod=home_mod,
         )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=f"Rosa locale: {e}")
@@ -153,23 +163,32 @@ def analyze(body: AnalyzeRequest, db: Session = Depends(get_db)):
     my_mod_ratings = my_data.get("modified_ratings", my_ratings)
     xp_level       = my_data.get("xp_level", 0)
 
-    tactic_ranking = rank_tactics(my_data["lineup"], opp_ratings, my_mod_ratings)
-    best_tactic    = tactic_ranking[0]["name"] if tactic_ranking else "Normal"
-    attitude       = recommend_attitude(
+    tactic_rec = recommend_tactic(my_data["lineup"], opp_profile, adjusted_chpp, my_mod_ratings)
+
+    attitude = recommend_attitude(
         spirit=body.spirit,
         confidence=body.confidence,
         match_type=body.match_type,
         league_position=None,
         opp_position=None,
     )
-    explanation = generate_explanation(my_mod_ratings, opp_ratings, my_formation, best_tactic, attitude)
 
-    xp_warning     = xp_level < 8
+    starter_ids = {e["player"].id for e in my_data["lineup"]}
+    bench = [p for p in my_players
+             if p.id not in starter_ids and (getattr(p, "injury_days", None) or 0) <= 0]
+    sub_plan = generate_sub_plan(my_data["lineup"], bench)
+    attitude_orders = generate_attitude_orders(sub_plan, body.is_home, body.spirit, body.confidence)
+
+    explanation = generate_explanation(
+        my_mod_ratings, app_opp, my_formation, tactic_rec["recommended"], attitude
+    )
+
+    xp_warning = xp_level < 8
     xp_alternative = None
     if xp_warning:
         best_alt, best_alt_xp = None, -1
         for fname in FORMATIONS:
-            fxp = merged_xp.get(fname, 0)
+            fxp = merged_fxp.get(fname, 0)
             if fxp >= 8 and fname != my_formation and fxp > best_alt_xp:
                 best_alt_xp = fxp
                 best_alt = fname
@@ -188,26 +207,48 @@ def analyze(body: AnalyzeRequest, db: Session = Depends(get_db)):
 
     return {
         "opponent": {
-            "team_name": opp_team_name,
-            "team_id": opp_team_id,
-            "best_formation": opp_formation,
-            "line_ratings": {k: round(v, 1) for k, v in opp_ratings.items()},
-            "recent_results": [
-                {"result": r.result, "goals_for": r.goals_for, "goals_against": r.goals_against}
-                for r in opp_recent
-            ],
+            "team_name":         opp_profile.team_name,
+            "team_id":           opp_profile.team_id,
+            "typical_formation": opp_profile.typical_formation,
+            "dominant_tactic":   opp_profile.dominant_tactic,
+            "avg_tactic_skill":  round(opp_profile.avg_tactic_skill, 1),
+            "chpp_ratings":      {k: round(v, 1) for k, v in adjusted_chpp.items()},
+            "recent_results":    opp_profile.recent_results,
+            "matches_used":      opp_profile.matches_used,
         },
         "my_team": {
-            "best_formation": my_formation,
-            "xp_level": xp_level,
-            "xp_warning": xp_warning,
-            "xp_alternative": xp_alternative,
-            "lineup": fmt_lineup(my_data["lineup"]),
-            "line_ratings": {k: round(v, 1) for k, v in my_ratings.items()},
+            "best_formation":   my_formation,
+            "xp_level":         xp_level,
+            "xp_warning":       xp_warning,
+            "xp_alternative":   xp_alternative,
+            "lineup":           fmt_lineup(my_data["lineup"]),
+            "line_ratings":     {k: round(v, 1) for k, v in my_ratings.items()},
             "modified_ratings": {k: round(v, 1) for k, v in my_mod_ratings.items()},
         },
-        "tactic_ranking": tactic_ranking,
-        "attitude": attitude,
+        "tactic_ranking":      tactic_rec["ranking"],
+        "tactic_recommendation": {"recommended": tactic_rec["recommended"]},
+        "sub_plan": [
+            {
+                "minute":      s.minute,
+                "out_name":    s.out_name,
+                "out_id":      s.out_id,
+                "out_stamina": s.out_stamina,
+                "in_name":     s.in_name,
+                "in_id":       s.in_id,
+                "reason":      s.reason,
+            }
+            for s in sub_plan
+        ],
+        "attitude_orders": [
+            {
+                "minute":    a.minute,
+                "condition": a.condition,
+                "attitude":  a.attitude,
+                "reason":    a.reason,
+            }
+            for a in attitude_orders
+        ],
+        "attitude":    attitude,
         "explanation": explanation,
     }
 
