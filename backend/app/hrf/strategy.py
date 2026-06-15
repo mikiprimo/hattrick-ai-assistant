@@ -23,20 +23,67 @@ TACTIC_NAMES = [
     "Tiri da Fuori", "Libertà d'Inventiva",
 ]
 
+_HOME_ATTACK  = 1.06
+_AWAY_PENALTY = 0.88
+
+
+def _chpp_to_app_scale(chpp_ratings: dict) -> dict:
+    """Convert CHPP 7-key hat-point ratings to app 4-key scale (÷6 approximation)."""
+    _S = 6.0
+    return {
+        "goalkeeper": chpp_ratings.get("mid_def", 0) / _S,
+        "defense":    (chpp_ratings.get("mid_def", 0) +
+                       chpp_ratings.get("right_def", 0) +
+                       chpp_ratings.get("left_def", 0)) / 3 / _S,
+        "midfield":   chpp_ratings.get("midfield", 0) / _S,
+        "attack":     (chpp_ratings.get("mid_att", 0) +
+                       chpp_ratings.get("right_att", 0) +
+                       chpp_ratings.get("left_att", 0)) / 3 / _S,
+    }
+
+
+def apply_home_away_modifier(chpp_ratings: dict, is_home: bool) -> dict:
+    """Adjust opponent CHPP ratings for venue context.
+    is_home=True: opponent plays away → deflate by 0.88.
+    is_home=False: opponent plays at home → inflate by 1.06."""
+    factor = _AWAY_PENALTY if is_home else _HOME_ATTACK
+    return {k: v * factor for k, v in chpp_ratings.items()}
+
+
+def detect_wing_weakness(chpp_ratings: dict) -> bool:
+    """True if opponent's wing defense is <70% of their central defense."""
+    wing_avg = (chpp_ratings.get("right_def", 0) + chpp_ratings.get("left_def", 0)) / 2
+    mid_def = chpp_ratings.get("mid_def", 0)
+    return mid_def > 0 and wing_avg < mid_def * 0.70
+
+
+def detect_pressing(opp_profile) -> bool:
+    """TacticType 1 = Pressing."""
+    return opp_profile.dominant_tactic == 1
+
+
+def detect_center_attack(opp_profile) -> bool:
+    """TacticType 3 = Attacco al Centro."""
+    return opp_profile.dominant_tactic == 3
+
+
+def _skill(p, attr: str) -> float:
+    return getattr(p, attr, None) or 0
+
 
 def role_rating(p, role: str) -> float:
     if role == "goalkeeper":
-        return p.goalkeeper * 0.85 + p.defending * 0.10 + p.set_pieces * 0.05
+        return _skill(p, "goalkeeper") * 0.85 + _skill(p, "defending") * 0.10 + _skill(p, "set_pieces") * 0.05
     if role == "side_defender":
-        return p.defending * 0.65 + p.winger * 0.20 + p.playmaking * 0.10 + p.passing * 0.05
+        return _skill(p, "defending") * 0.65 + _skill(p, "winger") * 0.20 + _skill(p, "playmaking") * 0.10 + _skill(p, "passing") * 0.05
     if role == "center_defender":
-        return p.defending * 0.75 + p.playmaking * 0.20 + p.passing * 0.05
+        return _skill(p, "defending") * 0.75 + _skill(p, "playmaking") * 0.20 + _skill(p, "passing") * 0.05
     if role == "inside_mid":
-        return p.playmaking * 0.55 + p.passing * 0.25 + p.defending * 0.15 + p.scoring * 0.05
+        return _skill(p, "playmaking") * 0.55 + _skill(p, "passing") * 0.25 + _skill(p, "defending") * 0.15 + _skill(p, "scoring") * 0.05
     if role == "winger":
-        return p.winger * 0.65 + p.playmaking * 0.20 + p.passing * 0.10 + p.defending * 0.05
+        return _skill(p, "winger") * 0.65 + _skill(p, "playmaking") * 0.20 + _skill(p, "passing") * 0.10 + _skill(p, "defending") * 0.05
     if role == "forward":
-        return p.scoring * 0.65 + p.passing * 0.25 + p.winger * 0.10
+        return _skill(p, "scoring") * 0.65 + _skill(p, "passing") * 0.25 + _skill(p, "winger") * 0.10
     return 0.0
 
 
@@ -146,8 +193,9 @@ def optimize_formation(
     spirit: int = 10,
     confidence: int = 10,
     formation_xp: dict[str, int] | None = None,
+    home_mod: float = 1.0,
 ) -> tuple[str, dict]:
-    healthy = [p for p in players if getattr(p, "injury_days", -1) <= 0]
+    healthy = [p for p in players if (getattr(p, "injury_days", None) or 0) <= 0]
     if not healthy:
         raise ValueError("Nessun giocatore sano disponibile")
 
@@ -163,15 +211,15 @@ def optimize_formation(
 
         xp       = formation_xp.get(name, 0)
         xp_mod   = _apply_xp_modifier(xp)
-        avg_form = (sum(getattr(e["player"], "form", 10) for e in data["lineup"])
+        avg_form = (sum(_skill(e["player"], "form") or 10 for e in data["lineup"])
                     / max(len(data["lineup"]), 1))
         form_mod = _apply_form_modifier(avg_form)
 
         modified = {
-            "goalkeeper": lr["goalkeeper"] * xp_mod * form_mod,
-            "defense":    lr["defense"]    * xp_mod * form_mod,
-            "midfield":   lr["midfield"]   * xp_mod * form_mod * spirit_mod,
-            "attack":     lr["attack"]     * xp_mod * form_mod * confidence_mod,
+            "goalkeeper": lr["goalkeeper"] * xp_mod * form_mod * home_mod,
+            "defense":    lr["defense"]    * xp_mod * form_mod * home_mod,
+            "midfield":   lr["midfield"]   * xp_mod * form_mod * spirit_mod * home_mod,
+            "attack":     lr["attack"]     * xp_mod * form_mod * confidence_mod * home_mod,
         }
         data["modified_ratings"] = modified
         data["xp_level"] = xp
