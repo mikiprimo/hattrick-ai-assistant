@@ -42,13 +42,33 @@ export interface MatchResult {
   goals_against: number
 }
 
+export interface SubPlanEntry {
+  minute: number
+  out_name: string
+  out_id: number
+  out_stamina: number
+  in_name: string
+  in_id: number
+  reason: string
+}
+
+export interface AttitudeOrderEntry {
+  minute: number
+  condition: string
+  attitude: string
+  reason: string
+}
+
 export interface AnalysisResult {
   opponent: {
     team_name: string
     team_id: number
-    best_formation: string
-    line_ratings: Record<string, number>
+    typical_formation: string
+    dominant_tactic: number | null
+    avg_tactic_skill: number
+    chpp_ratings: Record<string, number>
     recent_results: MatchResult[]
+    matches_used: number
   }
   my_team: {
     best_formation: string
@@ -60,12 +80,19 @@ export interface AnalysisResult {
     modified_ratings: Record<string, number>
   }
   tactic_ranking: TacticEntry[]
+  tactic_recommendation: { recommended: string }
+  sub_plan: SubPlanEntry[]
+  attitude_orders: AttitudeOrderEntry[]
   attitude: AttitudeResult
   explanation: string
 }
 
 export interface FormationXPMap {
   formation_xp: Record<string, number>
+}
+
+export interface TacticXPMap {
+  tactic_xp: Record<string, number>
 }
 
 export interface MatchPrepHistoryEntry {
@@ -95,13 +122,28 @@ export function putFormationXP(formation_name: string, xp_level: number): Promis
   })
 }
 
+export function getTacticXP(): Promise<TacticXPMap> {
+  return apiFetch<TacticXPMap>('/api/pre-partita/tactic-xp')
+}
+
+export function putTacticXP(tactic_name: string, xp_level: number): Promise<void> {
+  return apiFetch('/api/pre-partita/tactic-xp', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tactic_name, xp_level }),
+  })
+}
+
 export function analyzeOpponent(params: {
-  players_xml: string
-  matches_xml?: string
+  matchdetails_xml_1: string
+  matchdetails_xml_2?: string
+  matchdetails_xml_3?: string
+  is_home: boolean
   match_type: string
   spirit: number
   confidence: number
   formation_xp: Record<string, number>
+  tactic_xp?: Record<string, number>
 }): Promise<AnalysisResult> {
   return apiFetch<AnalysisResult>('/api/pre-partita/analyze', {
     method: 'POST',
