@@ -84,16 +84,26 @@ def scan_and_import(db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail=str(exc))
 
     players_upserted = 0
+    # Track Player objects already seen in this scan to avoid duplicate INSERTs
+    # (db.get() doesn't find pending-but-not-flushed objects in the identity map)
+    seen_players: dict[int, Player] = {}
 
     for snapshot in snapshots:
         for hp in snapshot.players:
             fields = _player_fields(hp)
-            existing = db.get(Player, hp.player_id)
-            if existing:
+            if hp.player_id in seen_players:
+                p_obj = seen_players[hp.player_id]
                 for k, v in fields.items():
-                    setattr(existing, k, v)
+                    setattr(p_obj, k, v)
             else:
-                db.add(Player(id=hp.player_id, **fields))
+                p_obj = db.get(Player, hp.player_id)
+                if p_obj:
+                    for k, v in fields.items():
+                        setattr(p_obj, k, v)
+                else:
+                    p_obj = Player(id=hp.player_id, **fields)
+                    db.add(p_obj)
+                seen_players[hp.player_id] = p_obj
             players_upserted += 1
 
             already = db.query(PlayerSkillHistory).filter_by(
