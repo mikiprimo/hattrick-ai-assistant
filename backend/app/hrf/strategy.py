@@ -247,7 +247,7 @@ def rank_tactics(
 
     opp_def       = opp_line_ratings.get("defense", 7.0)
     opp_mid       = opp_line_ratings.get("midfield", 7.0)
-    my_winger_avg = (sum(getattr(p, "winger", 0) for p in my_wingers) / len(my_wingers)
+    my_winger_avg = (sum(_skill(p, "winger") for p in my_wingers) / len(my_wingers)
                      if my_wingers else 0.0)
 
     def _quick(p) -> bool:
@@ -268,7 +268,7 @@ def rank_tactics(
     })
 
     # Pressing
-    pressing_score = (sum(getattr(p, "defending", 0) + getattr(p, "stamina", 0) for p in titolari)
+    pressing_score = (sum(_skill(p, "defending") + _skill(p, "stamina") for p in titolari)
                       / max(len(titolari), 1))
     results.append({
         "name": "Pressing",
@@ -277,7 +277,7 @@ def rank_tactics(
     })
 
     # Contropiede
-    ctrop_base = sum(getattr(p, "defending", 0) + getattr(p, "passing", 0) * 2 for p in defenders)
+    ctrop_base = sum(_skill(p, "defending") + _skill(p, "passing") * 2 for p in defenders)
     quick_bonus = sum(0.15 for p in outfield if _quick(p))
     ctrop_score = ctrop_base * (1 + quick_bonus)
     results.append({
@@ -287,7 +287,7 @@ def rank_tactics(
     })
 
     # Attacco al Centro
-    centro_base = sum(getattr(p, "passing", 0) for p in outfield)
+    centro_base = sum(_skill(p, "passing") for p in outfield)
     centro_score = centro_base * (1.20 if opp_def < 7 else 1.0)
     results.append({
         "name": "Attacco al Centro",
@@ -297,7 +297,7 @@ def rank_tactics(
     })
 
     # Attacco sulle Fasce
-    fasce_base = sum(getattr(p, "passing", 0) for p in outfield)
+    fasce_base = sum(_skill(p, "passing") for p in outfield)
     fasce_score = fasce_base * (1.20 if my_winger_avg > opp_mid else 1.0)
     results.append({
         "name": "Attacco sulle Fasce",
@@ -307,7 +307,7 @@ def rank_tactics(
     })
 
     # Tiri da Fuori
-    tdf_base = sum(getattr(p, "scoring", 0) + getattr(p, "set_pieces", 0) / 3 for p in outfield)
+    tdf_base = sum(_skill(p, "scoring") + _skill(p, "set_pieces") / 3 for p in outfield)
     tdf_score = tdf_base * (1.10 if opp_def >= 8 else 1.0)
     results.append({
         "name": "Tiri da Fuori",
@@ -317,7 +317,7 @@ def rank_tactics(
     })
 
     # Libertà d'Inventiva
-    lib_base = sum(getattr(p, "passing", 0) + getattr(p, "experience", 0) for p in outfield)
+    lib_base = sum(_skill(p, "passing") + _skill(p, "experience") for p in outfield)
     unp_bonus = sum(0.25 for p in outfield if _unpredictable(p))
     lib_score = lib_base * (1 + unp_bonus)
     results.append({
@@ -329,6 +329,38 @@ def rank_tactics(
 
     results.sort(key=lambda x: x["score"], reverse=True)
     return results
+
+
+def recommend_tactic(
+    lineup: list[dict],
+    opp_profile,
+    opp_chpp_ratings: dict,
+    my_modified_ratings: dict,
+) -> dict:
+    """Extends rank_tactics() with opponent-aware bonuses/maluses from CHPP analysis."""
+    app_opp = _chpp_to_app_scale(opp_chpp_ratings)
+    ranking = rank_tactics(lineup, app_opp, my_modified_ratings)
+
+    wing_weak    = detect_wing_weakness(opp_chpp_ratings)
+    center_atk   = detect_center_attack(opp_profile)
+    opp_pressing = detect_pressing(opp_profile)
+
+    for r in ranking:
+        if r["name"] == "Attacco sulle Fasce" and wing_weak:
+            r["score"] += 20.0
+            r["explanation"] += " Bonus: avversario debole sulle fasce (+20)."
+        if r["name"] == "Attacco al Centro" and center_atk:
+            r["score"] -= 10.0
+            r["explanation"] += " Malus: avversario forte al centro (-10)."
+        if r["name"] == "Contropiede" and center_atk:
+            r["score"] += 10.0
+            r["explanation"] += " Bonus: Contropiede efficace contro Attacco al Centro (+10)."
+        if r["name"] == "Pressing" and opp_pressing:
+            r["score"] -= 5.0
+            r["explanation"] += " Malus: avversario abituato al Pressing (-5)."
+
+    ranking.sort(key=lambda x: x["score"], reverse=True)
+    return {"recommended": ranking[0]["name"], "ranking": ranking}
 
 
 def recommend_attitude(
