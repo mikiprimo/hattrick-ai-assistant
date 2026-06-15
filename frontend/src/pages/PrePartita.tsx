@@ -22,6 +22,8 @@ const TACTIC_TYPE_LABEL: Record<number, string> = {
   4: 'Attacco sulle Fasce', 5: 'Tiri da Fuori', 6: 'Libertà d\'Inventiva',
 }
 
+const LS_KEY = 'prepartita_last_analysis'
+
 type Step = 1 | 2 | 3
 
 function StepHeader({ step }: { step: Step }) {
@@ -57,8 +59,14 @@ export function PrePartita() {
   const [activeXmlTab, setActiveXmlTab] = useState<0|1|2>(0)
   const [matchdetailsXml, setMatchdetailsXml] = useState(['', '', ''])
 
-  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(() => {
+    try { return JSON.parse(localStorage.getItem(LS_KEY) ?? 'null') } catch { return null }
+  })
   const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    if (analysis) setStep(3)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const squadQ = useQuery({ queryKey: ['pre-partita-squad'], queryFn: getPrePartitaSquad })
   const formationXPQ = useQuery({ queryKey: ['formation-xp'], queryFn: getFormationXP })
@@ -87,7 +95,10 @@ export function PrePartita() {
       formation_xp: formationXP,
       tactic_xp: tacticXP,
     }),
-    onSuccess: (data: AnalysisResult) => { setAnalysis(data); setStep(3); setSaved(false) },
+    onSuccess: (data: AnalysisResult) => {
+      localStorage.setItem(LS_KEY, JSON.stringify(data))
+      setAnalysis(data); setStep(3); setSaved(false)
+    },
   })
 
   const saveMut = useMutation({
@@ -529,7 +540,7 @@ export function PrePartita() {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <button style={btnSecondary} onClick={() => { setStep(1); setAnalysis(null) }}>← Nuova analisi</button>
+        <button style={btnSecondary} onClick={() => { localStorage.removeItem(LS_KEY); setStep(1); setAnalysis(null) }}>← Nuova analisi</button>
         <button style={{ ...btnPrimary, opacity: saved ? 0.6 : 1 }}
           disabled={saved || saveMut.isPending}
           onClick={() => saveMut.mutate()}>
