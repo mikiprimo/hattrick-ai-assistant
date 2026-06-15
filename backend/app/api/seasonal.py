@@ -124,10 +124,28 @@ def get_status(db: Session = Depends(get_db)):
     )
 
 
+def _current_players(db: Session) -> list[Player]:
+    """Return only players present in the most recent HRF snapshot."""
+    row = (
+        db.query(PlayerSkillHistory.snapshot_date)
+        .order_by(PlayerSkillHistory.snapshot_date.desc())
+        .first()
+    )
+    if not row:
+        return db.query(Player).all()
+    ids = {
+        r.player_id
+        for r in db.query(PlayerSkillHistory.player_id)
+        .filter(PlayerSkillHistory.snapshot_date == row.snapshot_date)
+        .all()
+    }
+    return db.query(Player).filter(Player.id.in_(ids)).all()
+
+
 @router.get("/seasonal/analysis/youth")
 def analysis_youth(db: Session = Depends(get_db)):
     latest = db.query(MatchSnapshot).order_by(MatchSnapshot.snapshot_date.desc()).first()
-    players = db.query(Player).all()
+    players = _current_players(db)
     history = []
     if latest:
         history = (
@@ -141,13 +159,13 @@ def analysis_youth(db: Session = Depends(get_db)):
 
 @router.get("/seasonal/analysis/maintain")
 def analysis_maintain(db: Session = Depends(get_db)):
-    players = db.query(Player).all()
+    players = _current_players(db)
     return analyze_maintain(players)
 
 
 @router.get("/seasonal/analysis/promote")
 def analysis_promote(db: Session = Depends(get_db)):
-    players = db.query(Player).all()
+    players = _current_players(db)
     latest = db.query(MatchSnapshot).order_by(MatchSnapshot.snapshot_date.desc()).first()
     series = latest.league_series if latest else ""
 
