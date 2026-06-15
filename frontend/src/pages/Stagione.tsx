@@ -290,7 +290,9 @@ function PromoteSection() {
         </p>
         {d.rival_avg ? (
           <div style={{ display: 'grid', gap: 10 }}>
-            {(['goalkeeper', 'defense', 'midfield', 'attack'] as const).map(line => {
+            {(['goalkeeper', 'defense', 'midfield', 'attack'] as const)
+              .filter(line => d.rival_avg![line] !== undefined)
+              .map(line => {
               const mine = d.my_ratings[line] ?? 0
               const rival = d.rival_avg![line] ?? 0
               const gap = d.gaps[line] ?? 0

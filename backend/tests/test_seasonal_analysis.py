@@ -176,3 +176,13 @@ def test_analyze_promote_manual_ratings_override():
     }}]
     result = analyze_promote(_squad(), rivals)
     assert result["rival_avg"]["defense"] == pytest.approx(9.0)
+
+
+def test_analyze_promote_manual_ratings_no_goalkeeper():
+    """Manual ratings senza portiere non devono generare un gap portiere fittizio."""
+    rivals = [{"team_name": "FC Manual", "players": [], "manual_ratings": {
+        "defense": 9.0, "midfield": 9.0, "attack": 9.0,
+    }}]
+    result = analyze_promote(_squad(), rivals)
+    assert "goalkeeper" not in result["rival_avg"]
+    assert "goalkeeper" not in result["gaps"]

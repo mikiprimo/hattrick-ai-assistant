@@ -165,12 +165,14 @@ class _RivalProxy:
 
 def _rival_line_ratings(players: list, manual: dict | None) -> dict:
     if manual and any(manual.get(k) for k in ("defense", "midfield", "attack")):
-        return {
-            "goalkeeper": float(manual.get("goalkeeper") or 0),
-            "defense":    float(manual.get("defense")    or 0),
-            "midfield":   float(manual.get("midfield")   or 0),
-            "attack":     float(manual.get("attack")     or 0),
+        result: dict = {
+            "defense":  float(manual.get("defense")  or 0),
+            "midfield": float(manual.get("midfield") or 0),
+            "attack":   float(manual.get("attack")   or 0),
         }
+        if manual.get("goalkeeper"):
+            result["goalkeeper"] = float(manual["goalkeeper"])
+        return result
     if not players:
         return {"goalkeeper": 0.0, "defense": 0.0, "midfield": 0.0, "attack": 0.0}
 
@@ -222,14 +224,19 @@ def analyze_promote(my_players: list, rivals: list) -> dict:
         _rival_line_ratings(r.get("players", []), r.get("manual_ratings"))
         for r in rivals
     ]
+    # Only compare lines present in every rival (avoids fake 0.0 gaps)
+    available_lines = set(rival_ratings_list[0].keys())
+    for r in rival_ratings_list[1:]:
+        available_lines &= set(r.keys())
+
     rival_avg = {
         line: round(sum(r[line] for r in rival_ratings_list) / len(rival_ratings_list), 2)
-        for line in ("goalkeeper", "defense", "midfield", "attack")
+        for line in available_lines
     }
 
     gaps = {
         line: round(my_ratings[line] - rival_avg[line], 2)
-        for line in ("goalkeeper", "defense", "midfield", "attack")
+        for line in available_lines
     }
 
     _ROLES = ["goalkeeper", "side_defender", "center_defender", "inside_mid", "winger", "forward"]
