@@ -363,6 +363,60 @@ def recommend_tactic(
     return {"recommended": ranking[0]["name"], "ranking": ranking}
 
 
+from dataclasses import dataclass as _dc
+
+
+@_dc
+class SubEntry:
+    minute:      int
+    out_name:    str
+    out_id:      int
+    out_stamina: int
+    in_name:     str
+    in_id:       int
+    reason:      str
+
+
+def _stamina_to_minute(stamina: int) -> int:
+    return max(55, min(85, stamina * 12 - 3))
+
+
+def generate_sub_plan(lineup: list[dict], bench: list) -> list[SubEntry]:
+    """Schedule up to 3 substitutions for starters with stamina ≤ 7.
+    Bench goalkeepers (goalkeeper skill > 8) are excluded from outfield sub candidates."""
+    starters_at_risk = sorted(
+        [e for e in lineup if e["line"] != "goalkeeper"
+         and (_skill(e["player"], "stamina") or 10) <= 7],
+        key=lambda e: _skill(e["player"], "stamina") or 10,
+    )[:3]
+
+    non_gk_bench = [p for p in bench if (_skill(p, "goalkeeper") or 0) <= 8]
+
+    plan: list[SubEntry] = []
+    used: set[int] = set()
+
+    for entry in starters_at_risk:
+        p_out = entry["player"]
+        stamina = _skill(p_out, "stamina") or 10
+        minute = _stamina_to_minute(stamina)
+        candidates = [b for b in non_gk_bench if b.id not in used]
+        if not candidates:
+            break
+        best_in = max(candidates, key=lambda b: role_rating(b, entry["role"]))
+        used.add(best_in.id)
+        plan.append(SubEntry(
+            minute=minute,
+            out_name=f"{p_out.first_name} {p_out.last_name}",
+            out_id=p_out.id,
+            out_stamina=stamina,
+            in_name=f"{best_in.first_name} {best_in.last_name}",
+            in_id=best_in.id,
+            reason=f"Stamina {stamina}: calo previsto al {minute}'",
+        ))
+
+    return plan
+
+
 def recommend_attitude(
     spirit: int,
     confidence: int,
