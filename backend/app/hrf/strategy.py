@@ -417,6 +417,59 @@ def generate_sub_plan(lineup: list[dict], bench: list) -> list[SubEntry]:
     return plan
 
 
+@_dc
+class AttitudeOrder:
+    minute:    int
+    condition: str
+    attitude:  str
+    reason:    str
+
+
+def _snap_to_hattrick_minute(m: int) -> int:
+    return max(60, min(85, round(m / 5) * 5))
+
+
+def generate_attitude_orders(
+    sub_plan: list[SubEntry],
+    is_home: bool,
+    spirit: int,
+    confidence: int,
+) -> list[AttitudeOrder]:
+    """Derive conditional attitude orders from the substitution plan.
+    Returns empty list if no substitutions are planned."""
+    if not sub_plan:
+        return []
+
+    first_min = sub_plan[0].minute
+    last_min  = sub_plan[-1].minute
+    ctx       = "in casa" if is_home else "in trasferta"
+
+    offensive_min = _snap_to_hattrick_minute(first_min + 2)
+    defensive_min = _snap_to_hattrick_minute(last_min - 3)
+    balanced_min  = _snap_to_hattrick_minute((last_min + 90) // 2)
+
+    return [
+        AttitudeOrder(
+            minute=offensive_min,
+            condition="se in svantaggio",
+            attitude="Offensivo",
+            reason=f"Reagire al gol subito ({ctx}, spirito {spirit})",
+        ),
+        AttitudeOrder(
+            minute=defensive_min,
+            condition="se in vantaggio",
+            attitude="Difensivo",
+            reason=f"Gestire il vantaggio ({ctx})",
+        ),
+        AttitudeOrder(
+            minute=balanced_min,
+            condition="pareggio",
+            attitude="Normale",
+            reason=f"Mantenere l'equilibrio ({ctx}, confidenza {confidence})",
+        ),
+    ]
+
+
 def recommend_attitude(
     spirit: int,
     confidence: int,
