@@ -1,6 +1,7 @@
 import { createBrowserRouter, RouterProvider, NavLink, Outlet } from 'react-router-dom'
 import { PrePartita } from './pages/PrePartita'
 import { Stagione } from './pages/Stagione'
+import { Girone } from './pages/Girone'
 import { Squad } from './pages/Squad'
 import { Settings } from './pages/Settings'
 import { PlayerDetail } from './pages/PlayerDetail'
@@ -19,6 +20,7 @@ function Layout() {
       <nav style={{ display: 'flex', gap: 4, padding: '0 24px', borderBottom: '1px solid #e5e7eb', background: '#fff' }}>
         <NavLink to="/" end style={navStyle}>Pre-Partita</NavLink>
         <NavLink to="/stagione" style={navStyle}>Stagione</NavLink>
+        <NavLink to="/girone" style={navStyle}>Girone</NavLink>
         <NavLink to="/rosa" style={navStyle}>Rosa</NavLink>
         <NavLink to="/impostazioni" style={navStyle}>Impostazioni</NavLink>
       </nav>
@@ -36,6 +38,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <PrePartita /> },
       { path: 'stagione', element: <Stagione /> },
+      { path: 'girone', element: <Girone /> },
       { path: 'rosa', element: <Squad /> },
       { path: 'rosa/:id', element: <PlayerDetail /> },
       { path: 'impostazioni', element: <Settings /> },
